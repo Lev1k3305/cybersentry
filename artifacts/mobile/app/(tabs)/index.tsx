@@ -27,11 +27,11 @@ type LogEntry = {
 };
 
 const BOOT_SEQ = [
-  'ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ...',
-  'ЗАГРУЗКА ЯДРА...',
-  'МОДУЛИ ПОДКЛЮЧЕНЫ.',
-  'УСТАНОВКА ЗАЩИЩЕННОГО КАНАЛА...',
-  'СОЕДИНЕНИЕ УСТАНОВЛЕНО.',
+  'DEDSEC // ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ...',
+  'ОБХОД БРАНДМАУЭРА: УСПЕШНО.',
+  'ЗАГРУЗКА ХАКЕРСКИХ МОДУЛЕЙ...',
+  'ШИФРОВАНИЕ КАНАЛА: АКТИВНО.',
+  'ДОБРО ПОЖАЛОВАТЬ, ОПЕРАТОР.',
 ];
 
 function formatTime(): string {
@@ -203,8 +203,8 @@ export default function TerminalScreen() {
         ]}
       >
         <Text style={[styles.headerTitle, { color: colors.primary }]}>
-          {'[ ЦКЦ v2.7 ]'}
-          <Text style={{ opacity: blinkOn ? 1 : 0 }}> █</Text>
+          {'DEDSEC//TERMINAL'}
+          <Text style={{ color: colors.accent, opacity: blinkOn ? 1 : 0 }}>▌</Text>
         </Text>
         <View style={styles.statusDots}>
           {[
@@ -249,7 +249,7 @@ export default function TerminalScreen() {
           },
         ]}
       >
-        <Text style={[styles.prompt, { color: colors.accent }]}>ОПЕРАТОР_01 $</Text>
+        <Text style={[styles.prompt, { color: colors.accent }]}>DS $</Text>
         <TextInput
           value={input}
           onChangeText={setInput}

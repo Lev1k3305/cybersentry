@@ -174,7 +174,7 @@ export default function StatusScreen() {
   return (
     <View style={s.container}>
       <View style={s.header}>
-        <Text style={s.headerTitle}>[ СТАТУС СИСТЕМЫ ]</Text>
+        <Text style={s.headerTitle}>DEDSEC//СТАТУС СИСТЕМЫ</Text>
         <Text style={s.headerSub}>
           {status
             ? `ОБНОВЛЕНО: ${new Date(status.timestamp).toLocaleTimeString('ru-RU')}`
