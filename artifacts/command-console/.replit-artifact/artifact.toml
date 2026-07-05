@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Central Command Console"
+version = "1.0.0"
+id = "artifacts/command-console"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21125
+
+[services.development]
+run = "pnpm --filter @workspace/command-console run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/command-console", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/command-console/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21125"
+BASE_PATH = "/"
