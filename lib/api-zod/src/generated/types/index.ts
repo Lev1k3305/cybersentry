@@ -6,10 +6,19 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './breachItem';
+export * from './breachItemSeverity';
 export * from './commandInput';
 export * from './commandResult';
 export * from './commandResultType';
+export * from './emailInput';
+export * from './emailResult';
 export * from './healthStatus';
+export * from './logEntry';
+export * from './logEntryLevel';
 export * from './moduleStatus';
 export * from './moduleStatusStatus';
+export * from './phoneInput';
+export * from './phoneResult';
+export * from './phoneResultRisk';
 export * from './systemStatus';

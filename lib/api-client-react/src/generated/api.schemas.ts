@@ -60,3 +60,75 @@ export interface SystemStatus {
   timestamp: string;
 }
 
+export interface PhoneInput {
+  phone: string;
+}
+
+export type PhoneResultRisk = typeof PhoneResultRisk[keyof typeof PhoneResultRisk];
+
+
+export const PhoneResultRisk = {
+  safe: 'safe',
+  warning: 'warning',
+  danger: 'danger',
+} as const;
+
+export interface PhoneResult {
+  phone: string;
+  risk: PhoneResultRisk;
+  label: string;
+  details: string;
+  /** Number of reported incidents */
+  calls: number;
+  /** @nullable */
+  lastSeen?: string | null;
+}
+
+export interface EmailInput {
+  email: string;
+}
+
+export type BreachItemSeverity = typeof BreachItemSeverity[keyof typeof BreachItemSeverity];
+
+
+export const BreachItemSeverity = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export interface BreachItem {
+  name: string;
+  date: string;
+  dataTypes: string[];
+  severity: BreachItemSeverity;
+}
+
+export interface EmailResult {
+  email: string;
+  compromised: boolean;
+  /** 0-100 risk score */
+  riskScore: number;
+  breaches: BreachItem[];
+  /** @nullable */
+  recommendation?: string | null;
+}
+
+export type LogEntryLevel = typeof LogEntryLevel[keyof typeof LogEntryLevel];
+
+
+export const LogEntryLevel = {
+  INFO: 'INFO',
+  WARN: 'WARN',
+  ALERT: 'ALERT',
+  OK: 'OK',
+} as const;
+
+export interface LogEntry {
+  id: string;
+  level: LogEntryLevel;
+  message: string;
+  timestamp: string;
+}
+

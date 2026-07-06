@@ -51,3 +51,53 @@ export const GetSystemStatusResponse = zod.object({
 })
 
 
+/**
+ * @summary Check phone number reputation
+ */
+export const CheckPhoneBody = zod.object({
+  "phone": zod.string()
+})
+
+export const CheckPhoneResponse = zod.object({
+  "phone": zod.string(),
+  "risk": zod.enum(['safe', 'warning', 'danger']),
+  "label": zod.string(),
+  "details": zod.string(),
+  "calls": zod.number().describe('Number of reported incidents'),
+  "lastSeen": zod.string().nullish()
+})
+
+
+/**
+ * @summary Scan email for data breaches
+ */
+export const ScanEmailBody = zod.object({
+  "email": zod.string()
+})
+
+export const ScanEmailResponse = zod.object({
+  "email": zod.string(),
+  "compromised": zod.boolean(),
+  "riskScore": zod.number().describe('0-100 risk score'),
+  "breaches": zod.array(zod.object({
+  "name": zod.string(),
+  "date": zod.string(),
+  "dataTypes": zod.array(zod.string()),
+  "severity": zod.enum(['low', 'medium', 'high', 'critical'])
+})),
+  "recommendation": zod.string().nullish()
+})
+
+
+/**
+ * @summary Get live security event log
+ */
+export const GetSecurityLogResponseItem = zod.object({
+  "id": zod.string(),
+  "level": zod.enum(['INFO', 'WARN', 'ALERT', 'OK']),
+  "message": zod.string(),
+  "timestamp": zod.string()
+})
+export const GetSecurityLogResponse = zod.array(GetSecurityLogResponseItem)
+
+

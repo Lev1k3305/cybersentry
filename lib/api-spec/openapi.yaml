@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: command
     description: Command terminal operations
+  - name: cybersentry
+    description: CyberSentry anti-fraud and security operations
 paths:
   /healthz:
     get:
@@ -64,6 +66,56 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SystemStatus"
+  /cybersentry/phone:
+    post:
+      operationId: checkPhone
+      tags: [cybersentry]
+      summary: Check phone number reputation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhoneInput"
+      responses:
+        "200":
+          description: Phone reputation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhoneResult"
+  /cybersentry/email:
+    post:
+      operationId: scanEmail
+      tags: [cybersentry]
+      summary: Scan email for data breaches
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailInput"
+      responses:
+        "200":
+          description: Email breach scan result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailResult"
+  /cybersentry/log:
+    get:
+      operationId: getSecurityLog
+      tags: [cybersentry]
+      summary: Get live security event log
+      responses:
+        "200":
+          description: List of security log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LogEntry"
 components:
   schemas:
     HealthStatus:
@@ -137,3 +189,78 @@ components:
           enum: [online, offline, degraded]
         latency:
           type: ["integer", "null"]
+    PhoneInput:
+      type: object
+      required: [phone]
+      properties:
+        phone:
+          type: string
+    PhoneResult:
+      type: object
+      required: [phone, risk, label, details, calls]
+      properties:
+        phone:
+          type: string
+        risk:
+          type: string
+          enum: [safe, warning, danger]
+        label:
+          type: string
+        details:
+          type: string
+        calls:
+          type: integer
+          description: Number of reported incidents
+        lastSeen:
+          type: ["string", "null"]
+    EmailInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+    BreachItem:
+      type: object
+      required: [name, date, dataTypes, severity]
+      properties:
+        name:
+          type: string
+        date:
+          type: string
+        dataTypes:
+          type: array
+          items:
+            type: string
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+    EmailResult:
+      type: object
+      required: [email, compromised, riskScore, breaches]
+      properties:
+        email:
+          type: string
+        compromised:
+          type: boolean
+        riskScore:
+          type: integer
+          description: 0-100 risk score
+        breaches:
+          type: array
+          items:
+            $ref: "#/components/schemas/BreachItem"
+        recommendation:
+          type: ["string", "null"]
+    LogEntry:
+      type: object
+      required: [id, level, message, timestamp]
+      properties:
+        id:
+          type: string
+        level:
+          type: string
+          enum: [INFO, WARN, ALERT, OK]
+        message:
+          type: string
+        timestamp:
+          type: string

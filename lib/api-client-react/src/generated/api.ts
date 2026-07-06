@@ -22,7 +22,12 @@ import type {
 import type {
   CommandInput,
   CommandResult,
+  EmailInput,
+  EmailResult,
   HealthStatus,
+  LogEntry,
+  PhoneInput,
+  PhoneResult,
   SystemStatus
 } from './api.schemas';
 
@@ -268,6 +273,223 @@ export function useGetSystemStatus<TData = Awaited<ReturnType<typeof getSystemSt
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetSystemStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCheckPhoneUrl = () => {
+
+
+
+
+  return `/api/cybersentry/phone`
+}
+
+/**
+ * @summary Check phone number reputation
+ */
+export const checkPhone = async (phoneInput: PhoneInput, options?: RequestInit): Promise<PhoneResult> => {
+
+  return customFetch<PhoneResult>(getCheckPhoneUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(phoneInput)
+  }
+);}
+
+
+
+
+export const getCheckPhoneMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkPhone>>, TError,{data: BodyType<PhoneInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkPhone>>, TError,{data: BodyType<PhoneInput>}, TContext> => {
+
+const mutationKey = ['checkPhone'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkPhone>>, {data: BodyType<PhoneInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  checkPhone(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckPhoneMutationResult = NonNullable<Awaited<ReturnType<typeof checkPhone>>>
+    export type CheckPhoneMutationBody = BodyType<PhoneInput>
+    export type CheckPhoneMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Check phone number reputation
+ */
+export const useCheckPhone = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkPhone>>, TError,{data: BodyType<PhoneInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkPhone>>,
+        TError,
+        {data: BodyType<PhoneInput>},
+        TContext
+      > => {
+      return useMutation(getCheckPhoneMutationOptions(options));
+    }
+
+export const getScanEmailUrl = () => {
+
+
+
+
+  return `/api/cybersentry/email`
+}
+
+/**
+ * @summary Scan email for data breaches
+ */
+export const scanEmail = async (emailInput: EmailInput, options?: RequestInit): Promise<EmailResult> => {
+
+  return customFetch<EmailResult>(getScanEmailUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(emailInput)
+  }
+);}
+
+
+
+
+export const getScanEmailMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scanEmail>>, TError,{data: BodyType<EmailInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof scanEmail>>, TError,{data: BodyType<EmailInput>}, TContext> => {
+
+const mutationKey = ['scanEmail'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scanEmail>>, {data: BodyType<EmailInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  scanEmail(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScanEmailMutationResult = NonNullable<Awaited<ReturnType<typeof scanEmail>>>
+    export type ScanEmailMutationBody = BodyType<EmailInput>
+    export type ScanEmailMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Scan email for data breaches
+ */
+export const useScanEmail = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scanEmail>>, TError,{data: BodyType<EmailInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof scanEmail>>,
+        TError,
+        {data: BodyType<EmailInput>},
+        TContext
+      > => {
+      return useMutation(getScanEmailMutationOptions(options));
+    }
+
+export const getGetSecurityLogUrl = () => {
+
+
+
+
+  return `/api/cybersentry/log`
+}
+
+/**
+ * @summary Get live security event log
+ */
+export const getSecurityLog = async ( options?: RequestInit): Promise<LogEntry[]> => {
+
+  return customFetch<LogEntry[]>(getGetSecurityLogUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSecurityLogQueryKey = () => {
+    return [
+    `/api/cybersentry/log`
+    ] as const;
+    }
+
+
+export const getGetSecurityLogQueryOptions = <TData = Awaited<ReturnType<typeof getSecurityLog>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSecurityLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSecurityLogQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSecurityLog>>> = ({ signal }) => getSecurityLog({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSecurityLog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSecurityLogQueryResult = NonNullable<Awaited<ReturnType<typeof getSecurityLog>>>
+export type GetSecurityLogQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get live security event log
+ */
+
+export function useGetSecurityLog<TData = Awaited<ReturnType<typeof getSecurityLog>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSecurityLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSecurityLogQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

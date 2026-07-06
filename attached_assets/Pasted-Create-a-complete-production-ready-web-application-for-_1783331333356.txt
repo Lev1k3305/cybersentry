@@ -1,0 +1,36 @@
+Create a complete, production-ready web application for a B2C cybersecurity and anti-fraud platform named "CyberSentry".
+
+Technical Stack:
+- Backend: Python (Flask or FastAPI)
+- Frontend: HTML5, Tailwind CSS, and JavaScript.
+- Theme: Cyberpunk-inspired but professional and clean. Dark slate background (#111827), vibrant emerald green (#10B981) for safe states, clear amber (#F59E0B) for warnings, and neon pink/red (#EF4444) for alerts.
+
+Requirements & Core Features:
+
+1. Legal Terms & Disclaimer Gate (Отказ от ответственности):
+   - On first load, a blurred overlay modal must completely block the application.
+   - Title: "CyberSentry: Условия использования и Конфиденциальность".
+   - Text: "Данное приложение предназначено исключительно для проверки личной безопасности, репутации номеров и анализа данных из открытых источников (OSINT). Разработчик не несет ответственности за любые возможные нелегальные, неправомерные или вредоносные действия пользователей, совершенные с использованием данного ПО."
+   - Include a mandatory checkbox: "Я подтверждаю, что буду использовать приложение исключительно в легальных целях".
+   - The "Войти в панель CyberSentry" button must remain disabled until the checkbox is ticked. Once accepted, close the modal and save consent in localStorage so it doesn't pop up again.
+
+2. Intuitive & Scannable User Interface:
+   - Header: Show the brand "[ CyberSentry v3.0 ]" prominently.
+   - Main Status Widget: A large, beautiful visual shield icon indicating "Статус: Ваша цифровая безопасность под контролем".
+   - Sub-metrics: Replace complex server jargon with user-friendly indicators like "База спам-номеров: Актуальна", "Защита сети: Активна".
+
+3. Modular Navigation (3 Main Tabs):
+   Create a clean, responsive layout where users can easily switch between three main functional tools:
+   
+   - TAB 1: [🔍 Проверить номер телефона]
+     An elegant search interface with an input field ("Введите номер телефона для проверки...") and a "Проверить" button. When submitted, the backend simulates a phone reputation lookup and returns a clean, structured status card (e.g., Green for safe, Red for "Мошенники / Спам: Схема с фейковыми звонками").
+     
+   - TAB 2: [📧 Сканер утечек аккаунтов]
+     An input field for email ("Введите ваш email..."). The Python backend processes it and returns a visual risk breakdown (using simple progress/risk bars or a clean layout) showing if the account was compromised in recent global data leaks, advising the user to change passwords if true.
+     
+   - TAB 3: [📊 Журнал событий защиты]
+     A live-updating, terminal-styled log window displaying simplified, easy-to-understand security updates (e.g., "[INFO] База мошеннических номеров обновлена", "[WARN] Зафиксирована волна спам-звонков в вашем регионе", "[OK] Сканирование уязвимостей завершено").
+
+4. Language & Copywriting:
+   - All text, labels, placeolders, and system messages must be entirely in Russian.
+   - Avoid dense blocks of text; use bullet points, clear spacing, bold headers, and intuitive badges so regular non-technical users instantly understand the value.
