@@ -61,6 +61,11 @@ export interface SystemStatus {
 }
 
 export interface PhoneInput {
+  /**
+     * @minLength 5
+     * @maxLength 20
+     * @pattern ^[0-9+\s\-().]+$
+     */
   phone: string;
 }
 
@@ -85,6 +90,10 @@ export interface PhoneResult {
 }
 
 export interface EmailInput {
+  /**
+     * @minLength 5
+     * @maxLength 100
+     */
   email: string;
 }
 

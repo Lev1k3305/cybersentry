@@ -7,5 +7,9 @@
  */
 
 export interface EmailInput {
+  /**
+     * @minLength 5
+     * @maxLength 100
+     */
   email: string;
 }

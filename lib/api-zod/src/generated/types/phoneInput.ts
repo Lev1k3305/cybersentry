@@ -7,5 +7,10 @@
  */
 
 export interface PhoneInput {
+  /**
+     * @minLength 5
+     * @maxLength 20
+     * @pattern ^[0-9+\s\-().]+$
+     */
   phone: string;
 }

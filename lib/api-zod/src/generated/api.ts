@@ -54,8 +54,15 @@ export const GetSystemStatusResponse = zod.object({
 /**
  * @summary Check phone number reputation
  */
+export const checkPhoneBodyPhoneMin = 5;
+export const checkPhoneBodyPhoneMax = 20;
+
+
+export const checkPhoneBodyPhoneRegExp = new RegExp('^[0-9+\\s\\-().]+$');
+
+
 export const CheckPhoneBody = zod.object({
-  "phone": zod.string()
+  "phone": zod.string().min(checkPhoneBodyPhoneMin).max(checkPhoneBodyPhoneMax).regex(checkPhoneBodyPhoneRegExp)
 })
 
 export const CheckPhoneResponse = zod.object({
@@ -71,8 +78,13 @@ export const CheckPhoneResponse = zod.object({
 /**
  * @summary Scan email for data breaches
  */
+export const scanEmailBodyEmailMin = 5;
+export const scanEmailBodyEmailMax = 100;
+
+
+
 export const ScanEmailBody = zod.object({
-  "email": zod.string()
+  "email": zod.string().email().min(scanEmailBodyEmailMin).max(scanEmailBodyEmailMax)
 })
 
 export const ScanEmailResponse = zod.object({

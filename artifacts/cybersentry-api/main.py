@@ -23,7 +23,7 @@ from typing import Optional
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -264,11 +264,39 @@ app.add_middleware(
 
 
 class PhoneInput(BaseModel):
-    phone: str
+    phone: str = Field(
+        ...,
+        min_length=5,
+        max_length=20,
+        description="Номер телефона в международном или местном формате",
+    )
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        # Allow only digits, +, -, spaces, and parentheses
+        if not re.match(r"^[0-9+\s\-().]+$", v):
+            raise ValueError("Номер телефона содержит недопустимые символы")
+        return v
 
 
 class EmailInput(BaseModel):
-    email: str
+    email: str = Field(
+        ...,
+        min_length=5,
+        max_length=100,
+        description="Email адрес для проверки на утечки",
+    )
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        # Basic email validation to prevent SSRF and injection attempts
+        if "@" not in v or "." not in v:
+            raise ValueError("Неверный формат email")
+        if any(c in v for c in "/\\ ;<>[]{}|`^\""):
+            raise ValueError("Email содержит недопустимые символы")
+        return v
 
 
 # ─── POST /cybersentry/phone ──────────────────────────────────────────────────
