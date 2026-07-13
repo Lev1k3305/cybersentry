@@ -82,9 +82,11 @@ export const scanEmailBodyEmailMin = 5;
 export const scanEmailBodyEmailMax = 100;
 
 
+export const scanEmailBodyEmailRegExp = new RegExp('^[^/\\\\ ;<>\\[\\]{}|`^"]+$');
+
 
 export const ScanEmailBody = zod.object({
-  "email": zod.string().email().min(scanEmailBodyEmailMin).max(scanEmailBodyEmailMax)
+  "email": zod.string().email().min(scanEmailBodyEmailMin).max(scanEmailBodyEmailMax).regex(scanEmailBodyEmailRegExp)
 })
 
 export const ScanEmailResponse = zod.object({

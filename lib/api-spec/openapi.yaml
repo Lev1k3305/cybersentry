@@ -225,6 +225,7 @@ components:
           minLength: 5
           maxLength: 100
           format: email
+          pattern: "^[^/\\\\ ;<>\\[\\]{}|`^\"]+$"
     BreachItem:
       type: object
       required: [name, date, dataTypes, severity]
