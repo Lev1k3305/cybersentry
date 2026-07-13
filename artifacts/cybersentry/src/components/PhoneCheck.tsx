@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 
 export function PhoneCheck() {
   const [phone, setPhone] = React.useState('');
@@ -29,22 +30,36 @@ export function PhoneCheck() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-3">
-        <Input
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="Введите номер телефона для проверки..."
-          className="font-mono text-lg py-6 bg-secondary/30"
-          disabled={checkPhone.isPending}
-        />
-        <Button 
-          type="submit" 
-          size="lg" 
-          className="py-6 px-8 font-mono tracking-wide"
-          disabled={checkPhone.isPending || !phone.trim()}
-        >
-          {checkPhone.isPending ? 'Анализ...' : 'Проверить'}
-        </Button>
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="phone-input" className="text-sm font-medium font-mono text-foreground">
+            Номер телефона <span className="text-destructive">*</span>
+          </Label>
+          <div className="flex gap-3">
+            <Input
+              id="phone-input"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+7 (999) 000-00-00"
+              className="font-mono text-lg py-6 bg-secondary/30"
+              disabled={checkPhone.isPending}
+              aria-describedby="phone-hint"
+              required
+            />
+            <Button
+              type="submit"
+              size="lg"
+              className="py-6 px-8 font-mono tracking-wide"
+              disabled={checkPhone.isPending || !phone.trim()}
+            >
+              {checkPhone.isPending ? 'Анализ...' : 'Проверить'}
+            </Button>
+          </div>
+        </div>
+        <p id="phone-hint" className="text-xs text-muted-foreground font-mono">
+          🔒 Запросы анонимизированы для обеспечения полной конфиденциальности.
+        </p>
       </form>
 
       {checkPhone.isPending && (

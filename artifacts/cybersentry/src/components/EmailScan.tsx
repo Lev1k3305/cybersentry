@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 
 export function EmailScan() {
   const [email, setEmail] = React.useState('');
@@ -30,23 +31,36 @@ export function EmailScan() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-3">
-        <Input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Введите ваш email..."
-          className="font-mono text-lg py-6 bg-secondary/30"
-          disabled={scanEmail.isPending}
-        />
-        <Button 
-          type="submit" 
-          size="lg" 
-          className="py-6 px-8 font-mono tracking-wide"
-          disabled={scanEmail.isPending || !email.trim()}
-        >
-          {scanEmail.isPending ? 'СКАНИРОВАНИЕ...' : 'Сканировать'}
-        </Button>
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="email-input" className="text-sm font-medium font-mono text-foreground">
+            Адрес электронной почты <span className="text-destructive">*</span>
+          </Label>
+          <div className="flex gap-3">
+            <Input
+              id="email-input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="example@domain.com"
+              className="font-mono text-lg py-6 bg-secondary/30"
+              disabled={scanEmail.isPending}
+              aria-describedby="email-hint"
+              required
+            />
+            <Button
+              type="submit"
+              size="lg"
+              className="py-6 px-8 font-mono tracking-wide"
+              disabled={scanEmail.isPending || !email.trim()}
+            >
+              {scanEmail.isPending ? 'СКАНИРОВАНИЕ...' : 'Сканировать'}
+            </Button>
+          </div>
+        </div>
+        <p id="email-hint" className="text-xs text-muted-foreground font-mono">
+          🔒 Ваши данные шифруются и не сохраняются на сервере.
+        </p>
       </form>
 
       {scanEmail.isPending && (
