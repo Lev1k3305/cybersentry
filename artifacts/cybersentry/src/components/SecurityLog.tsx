@@ -64,7 +64,12 @@ export function SecurityLog() {
   );
 }
 
-function LogLine({ entry }: { entry: any }) {
+// ⚡ Bolt Optimization: Memoize LogLine rendering.
+// Since security log entries are immutable once fetched, and logs are refetched every 10 seconds,
+// wrapping LogLine in React.memo and comparing the entry ID completely prevents unnecessary
+// re-renders of existing log items. This avoids CPU-intensive 'new Date()' parsing and slow
+// 'toLocaleTimeString' formatting for up to 50 items on every single log refetch poll.
+const LogLine = React.memo(function LogLine({ entry }: { entry: any }) {
   let levelColor = 'text-muted-foreground';
   
   if (entry.level === 'INFO') levelColor = 'text-primary';
@@ -89,4 +94,6 @@ function LogLine({ entry }: { entry: any }) {
       </span>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  return prevProps.entry.id === nextProps.entry.id;
+});
