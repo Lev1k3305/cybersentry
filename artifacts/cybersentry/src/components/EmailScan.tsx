@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, ShieldAlert, Fingerprint, Database, Calendar, AlertCircle } from 'lucide-react';
+import { Mail, ShieldAlert, Fingerprint, Database, Calendar, AlertCircle, X, AlertCircle as AlertIcon } from 'lucide-react';
 import { useScanEmail } from '@workspace/api-client-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 export function EmailScan() {
   const [email, setEmail] = React.useState('');
@@ -37,17 +38,33 @@ export function EmailScan() {
             Адрес электронной почты <span className="text-destructive">*</span>
           </Label>
           <div className="flex gap-3">
-            <Input
-              id="email-input"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="example@domain.com"
-              className="font-mono text-lg py-6 bg-secondary/30"
-              disabled={scanEmail.isPending}
-              aria-describedby="email-hint"
-              required
-            />
+            <div className="relative flex-1">
+              <Input
+                id="email-input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@domain.com"
+                className="font-mono text-lg py-6 bg-secondary/30 pr-10"
+                disabled={scanEmail.isPending}
+                aria-describedby="email-hint"
+                required
+              />
+              {email && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('');
+                    scanEmail.reset();
+                    document.getElementById('email-input')?.focus();
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring p-1 rounded-sm"
+                  aria-label="Очистить"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
             <Button
               type="submit"
               size="lg"
@@ -62,6 +79,16 @@ export function EmailScan() {
           🔒 Ваши данные шифруются и не сохраняются на сервере.
         </p>
       </form>
+
+      {scanEmail.isError && (
+        <Alert variant="destructive" className="font-mono bg-destructive/5 border-destructive/20">
+          <AlertIcon className="h-4 w-4" />
+          <AlertTitle className="font-bold">Ошибка сканирования</AlertTitle>
+          <AlertDescription>
+            Не удалось выполнить запрос сканирования утечек. Пожалуйста, попробуйте позже.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {scanEmail.isPending && (
         <Card className="border-border/50 bg-secondary/10">
