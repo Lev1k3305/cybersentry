@@ -12,6 +12,7 @@ With keys set, a provider outage returns HTTP 502 — never silent fallback.
 """
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import logging
 import os
 import re
@@ -33,6 +34,9 @@ PORT: int = int(os.environ.get("CYBERSENTRY_PY_PORT", "8000"))
 
 DEMO_PHONE  = PHONE_API_KEY  is None
 DEMO_BREACH = BREACH_API_KEY is None
+
+# Global persistent HTTP client for connection pooling and reuse
+http_client: Optional[httpx.AsyncClient] = None
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("cybersentry")
@@ -164,14 +168,27 @@ def check_spam_patterns(normalized: str) -> Optional[dict]:
 
 # ─── Phone: numlookupapi.com ──────────────────────────────────────────────────
 
+# ⚡ Bolt Optimization: Reuse global http_client to utilize connection pooling,
+# avoiding expensive TCP/TLS handshakes on every single request.
 async def numlookup_validate(phone: str) -> dict:
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        r = await client.get(
-            f"https://api.numlookupapi.com/v1/validate/{phone}",
-            params={"apikey": PHONE_API_KEY},
-        )
-        r.raise_for_status()
-        return r.json()
+    global http_client
+    client = http_client
+    if client is None:
+        async with httpx.AsyncClient(timeout=10.0) as temp_client:
+            r = await temp_client.get(
+                f"https://api.numlookupapi.com/v1/validate/{phone}",
+                params={"apikey": PHONE_API_KEY},
+            )
+            r.raise_for_status()
+            return r.json()
+
+    r = await client.get(
+        f"https://api.numlookupapi.com/v1/validate/{phone}",
+        params={"apikey": PHONE_API_KEY},
+        timeout=10.0,
+    )
+    r.raise_for_status()
+    return r.json()
 
 
 # ─── Email: HIBP v3 ───────────────────────────────────────────────────────────
@@ -225,36 +242,79 @@ def risk_score_from_breaches(count: int, has_passwords: bool) -> int:
     return min(100, base + 25) if has_passwords else base
 
 
+# ⚡ Bolt Optimization: Reuse global http_client to utilize connection pooling,
+# avoiding expensive TCP/TLS handshakes on every single request.
 async def hibp_check(email: str) -> list[dict]:
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        r = await client.get(
-            f"https://haveibeenpwned.com/api/v3/breachedaccount/{email}",
-            headers={
-                "hibp-api-key": BREACH_API_KEY,       # type: ignore[arg-type]
-                "User-Agent":   "CyberSentry-App",
-            },
-            params={"truncateResponse": "false"},
-        )
-        if r.status_code == 404:
-            return []
-        r.raise_for_status()
-        return r.json()
+    global http_client
+    client = http_client
+    if client is None:
+        async with httpx.AsyncClient(timeout=15.0) as temp_client:
+            r = await temp_client.get(
+                f"https://haveibeenpwned.com/api/v3/breachedaccount/{email}",
+                headers={
+                    "hibp-api-key": BREACH_API_KEY,       # type: ignore[arg-type]
+                    "User-Agent":   "CyberSentry-App",
+                },
+                params={"truncateResponse": "false"},
+            )
+            if r.status_code == 404:
+                return []
+            r.raise_for_status()
+            return r.json()
+
+    r = await client.get(
+        f"https://haveibeenpwned.com/api/v3/breachedaccount/{email}",
+        headers={
+            "hibp-api-key": BREACH_API_KEY,       # type: ignore[arg-type]
+            "User-Agent":   "CyberSentry-App",
+        },
+        params={"truncateResponse": "false"},
+        timeout=15.0,
+    )
+    if r.status_code == 404:
+        return []
+    r.raise_for_status()
+    return r.json()
 
 
 # ─── Email: emailrep.io (free, no key) ────────────────────────────────────────
 
+# ⚡ Bolt Optimization: Reuse global http_client to utilize connection pooling,
+# avoiding expensive TCP/TLS handshakes on every single request.
 async def emailrep_check(email: str) -> Optional[dict]:
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        r = await client.get(
-            f"https://emailrep.io/{email}",
-            headers={"User-Agent": "CyberSentry-App"},
-        )
-        return r.json() if r.status_code == 200 else None
+    global http_client
+    client = http_client
+    if client is None:
+        async with httpx.AsyncClient(timeout=10.0) as temp_client:
+            r = await temp_client.get(
+                f"https://emailrep.io/{email}",
+                headers={"User-Agent": "CyberSentry-App"},
+            )
+            return r.json() if r.status_code == 200 else None
+
+    r = await client.get(
+        f"https://emailrep.io/{email}",
+        headers={"User-Agent": "CyberSentry-App"},
+        timeout=10.0,
+    )
+    return r.json() if r.status_code == 200 else None
 
 
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
 
-app = FastAPI(title="CyberSentry API", version="3.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global http_client
+    # Initialize shared httpx.AsyncClient with connection limits & keepalive
+    limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
+    http_client = httpx.AsyncClient(limits=limits, timeout=15.0)
+    yield
+    # Safely close client on application shutdown
+    await http_client.aclose()
+    http_client = None
+
+
+app = FastAPI(title="CyberSentry API", version="3.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
