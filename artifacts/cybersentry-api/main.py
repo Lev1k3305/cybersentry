@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import urllib.parse
 import uuid
 from collections import deque
 from datetime import datetime, timezone
@@ -226,9 +227,11 @@ def risk_score_from_breaches(count: int, has_passwords: bool) -> int:
 
 
 async def hibp_check(email: str) -> list[dict]:
+    # URL-encode the email parameter to secure the path segment against query parameter/fragment/path injection
+    safe_email = urllib.parse.quote(email)
     async with httpx.AsyncClient(timeout=15.0) as client:
         r = await client.get(
-            f"https://haveibeenpwned.com/api/v3/breachedaccount/{email}",
+            f"https://haveibeenpwned.com/api/v3/breachedaccount/{safe_email}",
             headers={
                 "hibp-api-key": BREACH_API_KEY,       # type: ignore[arg-type]
                 "User-Agent":   "CyberSentry-App",
@@ -244,9 +247,11 @@ async def hibp_check(email: str) -> list[dict]:
 # ─── Email: emailrep.io (free, no key) ────────────────────────────────────────
 
 async def emailrep_check(email: str) -> Optional[dict]:
+    # URL-encode the email parameter to secure the path segment against query parameter/fragment/path injection
+    safe_email = urllib.parse.quote(email)
     async with httpx.AsyncClient(timeout=10.0) as client:
         r = await client.get(
-            f"https://emailrep.io/{email}",
+            f"https://emailrep.io/{safe_email}",
             headers={"User-Agent": "CyberSentry-App"},
         )
         return r.json() if r.status_code == 200 else None
