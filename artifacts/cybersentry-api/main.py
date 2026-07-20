@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+from contextlib import asynccontextmanager
 import urllib.parse
 import uuid
 from collections import deque
@@ -163,16 +164,33 @@ def check_spam_patterns(normalized: str) -> Optional[dict]:
     return None
 
 
+# ─── Global HTTP Client Connection Pool ───────────────────────────────────────
+# We use a single shared httpx.AsyncClient initialized during FastAPI lifespan
+# to take advantage of HTTP connection pooling and avoid expensive TCP/TLS handshakes.
+http_client: httpx.AsyncClient | None = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global http_client
+    http_client = httpx.AsyncClient(timeout=15.0)
+    try:
+        yield
+    finally:
+        await http_client.aclose()
+
+
 # ─── Phone: numlookupapi.com ──────────────────────────────────────────────────
 
 async def numlookup_validate(phone: str) -> dict:
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        r = await client.get(
-            f"https://api.numlookupapi.com/v1/validate/{phone}",
-            params={"apikey": PHONE_API_KEY},
-        )
-        r.raise_for_status()
-        return r.json()
+    if http_client is None:
+        raise RuntimeError("HTTP client is not initialized")
+    r = await http_client.get(
+        f"https://api.numlookupapi.com/v1/validate/{phone}",
+        params={"apikey": PHONE_API_KEY},
+        timeout=10.0,
+    )
+    r.raise_for_status()
+    return r.json()
 
 
 # ─── Email: HIBP v3 ───────────────────────────────────────────────────────────
@@ -229,19 +247,21 @@ def risk_score_from_breaches(count: int, has_passwords: bool) -> int:
 async def hibp_check(email: str) -> list[dict]:
     # URL-encode the email parameter to secure the path segment against query parameter/fragment/path injection
     safe_email = urllib.parse.quote(email)
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        r = await client.get(
-            f"https://haveibeenpwned.com/api/v3/breachedaccount/{safe_email}",
-            headers={
-                "hibp-api-key": BREACH_API_KEY,       # type: ignore[arg-type]
-                "User-Agent":   "CyberSentry-App",
-            },
-            params={"truncateResponse": "false"},
-        )
-        if r.status_code == 404:
-            return []
-        r.raise_for_status()
-        return r.json()
+    if http_client is None:
+        raise RuntimeError("HTTP client is not initialized")
+    r = await http_client.get(
+        f"https://haveibeenpwned.com/api/v3/breachedaccount/{safe_email}",
+        headers={
+            "hibp-api-key": BREACH_API_KEY,       # type: ignore[arg-type]
+            "User-Agent":   "CyberSentry-App",
+        },
+        params={"truncateResponse": "false"},
+        timeout=15.0,
+    )
+    if r.status_code == 404:
+        return []
+    r.raise_for_status()
+    return r.json()
 
 
 # ─── Email: emailrep.io (free, no key) ────────────────────────────────────────
@@ -249,17 +269,19 @@ async def hibp_check(email: str) -> list[dict]:
 async def emailrep_check(email: str) -> Optional[dict]:
     # URL-encode the email parameter to secure the path segment against query parameter/fragment/path injection
     safe_email = urllib.parse.quote(email)
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        r = await client.get(
-            f"https://emailrep.io/{safe_email}",
-            headers={"User-Agent": "CyberSentry-App"},
-        )
-        return r.json() if r.status_code == 200 else None
+    if http_client is None:
+        raise RuntimeError("HTTP client is not initialized")
+    r = await http_client.get(
+        f"https://emailrep.io/{safe_email}",
+        headers={"User-Agent": "CyberSentry-App"},
+        timeout=10.0,
+    )
+    return r.json() if r.status_code == 200 else None
 
 
 # ─── FastAPI app ──────────────────────────────────────────────────────────────
 
-app = FastAPI(title="CyberSentry API", version="3.0.0")
+app = FastAPI(title="CyberSentry API", version="3.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
