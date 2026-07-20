@@ -21,6 +21,7 @@ import uuid
 from collections import deque
 from datetime import datetime, timezone
 from typing import Optional
+from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -181,6 +182,19 @@ async def lifespan(app: FastAPI):
 
 # ─── Phone: numlookupapi.com ──────────────────────────────────────────────────
 
+# Global HTTP client to leverage HTTP connection pooling and avoid expensive TCP/TLS handshakes
+http_client: Optional[httpx.AsyncClient] = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global http_client
+    # Initialize a single, shared, global AsyncClient managed via FastAPI lifespan context manager
+    http_client = httpx.AsyncClient()
+    yield
+    # Ensure the client is properly closed upon shutdown
+    await http_client.aclose()
+
+
 async def numlookup_validate(phone: str) -> dict:
     if http_client is None:
         raise RuntimeError("HTTP client is not initialized")
@@ -245,6 +259,8 @@ def risk_score_from_breaches(count: int, has_passwords: bool) -> int:
 
 
 async def hibp_check(email: str) -> list[dict]:
+    if http_client is None:
+        raise HTTPException(status_code=500, detail="HTTP client is not initialized")
     # URL-encode the email parameter to secure the path segment against query parameter/fragment/path injection
     safe_email = urllib.parse.quote(email)
     if http_client is None:
@@ -267,6 +283,8 @@ async def hibp_check(email: str) -> list[dict]:
 # ─── Email: emailrep.io (free, no key) ────────────────────────────────────────
 
 async def emailrep_check(email: str) -> Optional[dict]:
+    if http_client is None:
+        raise HTTPException(status_code=500, detail="HTTP client is not initialized")
     # URL-encode the email parameter to secure the path segment against query parameter/fragment/path injection
     safe_email = urllib.parse.quote(email)
     if http_client is None:
