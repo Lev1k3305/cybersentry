@@ -7,3 +7,7 @@
 ## 2026-07-07 - [Python Connection Pooling with Global httpx.AsyncClient]
 **Learning:** Creating and closing a separate `httpx.AsyncClient` instance for every outbound HTTP request introduces significant latency overhead due to repeated TCP connection setups and TLS handshakes.
 **Action:** Initialize a single, shared, global `httpx.AsyncClient` instance managed via FastAPI's `lifespan` context manager, allowing connection pooling to speed up repeated external API lookups and reduce CPU overhead on the server.
+
+## 2026-07-08 - [Mobile Terminal Blinking Cursor State & List Item Memoization]
+**Learning:** In a mobile terminal UI featuring a 500ms blinking cursor state update, the parent component re-renders completely on every blink interval. This forces the entire logs list (FlatList) to trigger layout and render recalculations for all `EntryRow` components, generating high CPU usage and drain on mobile devices.
+**Action:** Wrap the list row component (`EntryRow`) in `React.memo` with a custom comparison function checking both the log entry's unique ID and the theme colors context references stability. This cleanly stops rendering overhead for unchanged historical terminal entries completely.
