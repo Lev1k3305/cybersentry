@@ -38,7 +38,12 @@ function formatTime(): string {
   return new Date().toLocaleTimeString('ru-RU', { hour12: false });
 }
 
-function EntryRow({ entry, colors }: { entry: LogEntry; colors: ReturnType<typeof useColors> }) {
+// ⚡ Bolt Optimization: Memoize EntryRow rendering.
+// Since log entries are immutable once loaded and added to the list, but a blinking cursor interval
+// triggers state updates every 500ms, wrapping EntryRow in React.memo and comparing the entry ID
+// completely prevents unnecessary re-renders of existing historical log items. This drastically
+// cuts down render time and layout overhead of list items on every single blinking cursor tick.
+const EntryRow = React.memo(function EntryRow({ entry, colors }: { entry: LogEntry; colors: ReturnType<typeof useColors> }) {
   let textColor = colors.primary;
   if (entry.type === 'error') textColor = colors.destructive;
   if (entry.type === 'system' || entry.type === 'boot') textColor = colors.accent;
@@ -61,7 +66,9 @@ function EntryRow({ entry, colors }: { entry: LogEntry; colors: ReturnType<typeo
       )}
     </View>
   );
-}
+}, (prevProps, nextProps) => {
+  return prevProps.entry.id === nextProps.entry.id && prevProps.colors === nextProps.colors;
+});
 
 export default function TerminalScreen() {
   const colors = useColors();
