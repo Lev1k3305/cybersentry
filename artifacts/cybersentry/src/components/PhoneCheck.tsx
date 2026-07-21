@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, AlertTriangle, ShieldCheck, AlertOctagon, PhoneCall, Clock } from 'lucide-react';
+import { Search, AlertTriangle, ShieldCheck, AlertOctagon, PhoneCall, Clock, X } from 'lucide-react';
 import { useCheckPhone } from '@workspace/api-client-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 export function PhoneCheck() {
   const [phone, setPhone] = React.useState('');
@@ -36,17 +37,33 @@ export function PhoneCheck() {
             Номер телефона <span className="text-destructive">*</span>
           </Label>
           <div className="flex gap-3">
-            <Input
-              id="phone-input"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+7 (999) 000-00-00"
-              className="font-mono text-lg py-6 bg-secondary/30"
-              disabled={checkPhone.isPending}
-              aria-describedby="phone-hint"
-              required
-            />
+            <div className="relative flex-1">
+              <Input
+                id="phone-input"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+7 (999) 000-00-00"
+                className="font-mono text-lg py-6 bg-secondary/30 pr-10"
+                disabled={checkPhone.isPending}
+                aria-describedby="phone-hint"
+                required
+              />
+              {phone && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhone('');
+                    checkPhone.reset();
+                    document.getElementById('phone-input')?.focus();
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring p-1 rounded-sm"
+                  aria-label="Очистить"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
             <Button
               type="submit"
               size="lg"
@@ -61,6 +78,16 @@ export function PhoneCheck() {
           🔒 Запросы анонимизированы для обеспечения полной конфиденциальности.
         </p>
       </form>
+
+      {checkPhone.isError && (
+        <Alert variant="destructive" className="font-mono bg-destructive/5 border-destructive/20">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle className="font-bold">Ошибка анализа</AlertTitle>
+          <AlertDescription>
+            Не удалось выполнить запрос проверки номера. Пожалуйста, попробуйте позже.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {checkPhone.isPending && (
         <Card className="border-border/50 bg-secondary/10">
