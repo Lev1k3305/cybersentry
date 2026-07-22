@@ -11,3 +11,7 @@
 ## 2026-07-08 - [Mobile Terminal Blinking Cursor State & List Item Memoization]
 **Learning:** In a mobile terminal UI featuring a 500ms blinking cursor state update, the parent component re-renders completely on every blink interval. This forces the entire logs list (FlatList) to trigger layout and render recalculations for all `EntryRow` components, generating high CPU usage and drain on mobile devices.
 **Action:** Wrap the list row component (`EntryRow`) in `React.memo` with a custom comparison function checking both the log entry's unique ID and the theme colors context references stability. This cleanly stops rendering overhead for unchanged historical terminal entries completely.
+
+## 2026-07-09 - [Web Command Console Input State & Log Line Memoization]
+**Learning:** In a web-based command console terminal interface, typing in the single-line input field updates the local `input` state on every keystroke. This causes the entire list of historical console log items to completely re-render and recalculate layouts on every character typed, lagging the keystroke feedback as the log length increases.
+**Action:** Extract log row elements into a separate `<TerminalRow />` component wrapped in `React.memo` with a custom comparison function checking log IDs and timestamps. This cleanly prevents rendering overhead for historical terminal rows when typing in the command console.

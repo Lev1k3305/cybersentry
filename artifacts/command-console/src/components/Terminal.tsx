@@ -17,6 +17,48 @@ const BOOT_SEQ = [
   "СОЕДИНЕНИЕ УСТАНОВЛЕНО."
 ];
 
+// ⚡ Bolt Optimization: Memoize TerminalRow rendering.
+// Since terminal log entries are immutable once created, but typing in the input field triggers state
+// updates on every keystroke, wrapping each individual log line in React.memo and comparing the entry ID
+// completely prevents unnecessary re-renders of existing historical console items. This drastically
+// cuts down layout and render times of terminal lines during high-frequency text input.
+const TerminalRow = React.memo(function TerminalRow({ log }: { log: LogEntry }) {
+  let colorClass = 'text-primary glow-text';
+  if (log.type === 'error') colorClass = 'text-destructive glow-text-destructive';
+  if (log.type === 'system' || log.type === 'boot') colorClass = 'text-accent glow-text-accent';
+  if (log.type === 'success') colorClass = 'text-primary glow-text';
+
+  const renderLogText = () => {
+    if (log.type === 'input') {
+      return (
+        <div className="flex gap-2">
+          <span className="text-accent shrink-0 glow-text-accent">{'>'}</span>
+          <span className="text-primary glow-text">{log.text}</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`whitespace-pre-wrap ${colorClass}`}>
+        {log.text}
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex gap-3 text-sm font-mono leading-relaxed group hover:bg-white/5 p-1 -mx-1 rounded transition-colors">
+      <span className="text-muted-foreground shrink-0 select-none opacity-50 group-hover:opacity-100 transition-opacity">
+        [{log.timestamp}]
+      </span>
+      <div className="flex-1 break-words">
+        {renderLogText()}
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.log.id === nextProps.log.id && prevProps.log.timestamp === nextProps.log.timestamp;
+});
+
 export function Terminal() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [input, setInput] = useState('');
@@ -124,40 +166,11 @@ export function Terminal() {
     }
   };
 
-  const renderLogText = (entry: LogEntry) => {
-    let colorClass = 'text-primary glow-text';
-    if (entry.type === 'error') colorClass = 'text-destructive glow-text-destructive';
-    if (entry.type === 'system' || entry.type === 'boot') colorClass = 'text-accent glow-text-accent';
-    if (entry.type === 'success') colorClass = 'text-primary glow-text';
-
-    if (entry.type === 'input') {
-      return (
-        <div className="flex gap-2">
-          <span className="text-accent shrink-0 glow-text-accent">{'>'}</span>
-          <span className="text-primary glow-text">{entry.text}</span>
-        </div>
-      );
-    }
-
-    return (
-      <div className={`whitespace-pre-wrap ${colorClass}`}>
-        {entry.text}
-      </div>
-    );
-  };
-
   return (
     <div className="flex flex-col h-full w-full relative" onClick={() => inputRef.current?.focus()}>
       <div className="flex-1 overflow-y-auto p-4 space-y-2 pb-24 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         {logs.map(log => (
-          <div key={log.id} className="flex gap-3 text-sm font-mono leading-relaxed group hover:bg-white/5 p-1 -mx-1 rounded transition-colors">
-            <span className="text-muted-foreground shrink-0 select-none opacity-50 group-hover:opacity-100 transition-opacity">
-              [{log.timestamp}]
-            </span>
-            <div className="flex-1 break-words">
-              {renderLogText(log)}
-            </div>
-          </div>
+          <TerminalRow key={log.id} log={log} />
         ))}
         <div ref={bottomRef} />
       </div>
