@@ -34,6 +34,32 @@ function getCachedMetrics(): CachedMetrics {
 
 // ─── command definitions ────────────────────────────────────────────────────
 
+// ─── OS Metrics Caching layer ────────────────────────────────────────────────
+// os.cpus(), os.totalmem(), and os.freemem() can be heavy to call on every tick of poll/command requests.
+// Caching with a short TTL (e.g. 2000ms) avoids blocking the Event Loop on high polling frequency.
+interface CachedMetrics {
+  cpus: os.CpuInfo[];
+  totalMem: number;
+  freeMem: number;
+  lastUpdated: number;
+}
+
+let cachedMetrics: CachedMetrics | null = null;
+const METRICS_TTL = 2000; // 2 seconds TTL
+
+function getOSMetrics(): { cpus: os.CpuInfo[]; totalMem: number; freeMem: number } {
+  const now = Date.now();
+  if (!cachedMetrics || now - cachedMetrics.lastUpdated > METRICS_TTL) {
+    cachedMetrics = {
+      cpus: os.cpus(),
+      totalMem: os.totalmem(),
+      freeMem: os.freemem(),
+      lastUpdated: now,
+    };
+  }
+  return cachedMetrics;
+}
+
 const COMMANDS: Record<
   string,
   () => { output: string; type: "info" | "success" | "error" | "system" | "clear" }
@@ -57,10 +83,7 @@ const COMMANDS: Record<
   }),
 
   status: () => {
-    const metrics = getCachedMetrics();
-    const cpus = metrics.cpus;
-    const totalMem = metrics.totalMem;
-    const freeMem = metrics.freeMem;
+    const { cpus, totalMem, freeMem } = getOSMetrics();
     const usedMemPct = Math.round(((totalMem - freeMem) / totalMem) * 100);
     const uptimeSec = Math.floor((Date.now() - serverStart) / 1000);
     const hh = Math.floor(uptimeSec / 3600).toString().padStart(2, "0");
@@ -192,10 +215,7 @@ router.post("/command", async (req, res): Promise<void> => {
 // ─── GET /system/status ─────────────────────────────────────────────────────
 
 router.get("/system/status", async (_req, res): Promise<void> => {
-  const metrics = getCachedMetrics();
-  const cpus = metrics.cpus;
-  const totalMem = metrics.totalMem;
-  const freeMem = metrics.freeMem;
+  const { cpus, totalMem, freeMem } = getOSMetrics();
   const usedMemPct = parseFloat(
     (((totalMem - freeMem) / totalMem) * 100).toFixed(1)
   );
