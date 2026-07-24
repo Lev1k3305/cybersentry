@@ -7,6 +7,31 @@ const router: IRouter = Router();
 // Track server start time for uptime
 const serverStart = Date.now();
 
+// ⚡ Bolt Optimization: Cache OS metrics to avoid expensive, synchronous, and blocking
+// kernel queries on high-frequency status polls and CLI commands.
+interface CachedMetrics {
+  totalMem: number;
+  freeMem: number;
+  cpus: os.CpuInfo[];
+}
+
+let cachedMetrics: CachedMetrics | null = null;
+let lastFetchTime = 0;
+const CACHE_TTL = 2000; // 2 seconds
+
+function getCachedMetrics(): CachedMetrics {
+  const now = Date.now();
+  if (!cachedMetrics || now - lastFetchTime > CACHE_TTL) {
+    cachedMetrics = {
+      totalMem: os.totalmem(),
+      freeMem: os.freemem(),
+      cpus: os.cpus(),
+    };
+    lastFetchTime = now;
+  }
+  return cachedMetrics;
+}
+
 // ─── command definitions ────────────────────────────────────────────────────
 
 const COMMANDS: Record<
@@ -32,9 +57,10 @@ const COMMANDS: Record<
   }),
 
   status: () => {
-    const cpus = os.cpus();
-    const totalMem = os.totalmem();
-    const freeMem = os.freemem();
+    const metrics = getCachedMetrics();
+    const cpus = metrics.cpus;
+    const totalMem = metrics.totalMem;
+    const freeMem = metrics.freeMem;
     const usedMemPct = Math.round(((totalMem - freeMem) / totalMem) * 100);
     const uptimeSec = Math.floor((Date.now() - serverStart) / 1000);
     const hh = Math.floor(uptimeSec / 3600).toString().padStart(2, "0");
@@ -166,9 +192,10 @@ router.post("/command", async (req, res): Promise<void> => {
 // ─── GET /system/status ─────────────────────────────────────────────────────
 
 router.get("/system/status", async (_req, res): Promise<void> => {
-  const cpus = os.cpus();
-  const totalMem = os.totalmem();
-  const freeMem = os.freemem();
+  const metrics = getCachedMetrics();
+  const cpus = metrics.cpus;
+  const totalMem = metrics.totalMem;
+  const freeMem = metrics.freeMem;
   const usedMemPct = parseFloat(
     (((totalMem - freeMem) / totalMem) * 100).toFixed(1)
   );
