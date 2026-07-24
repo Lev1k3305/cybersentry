@@ -15,3 +15,7 @@
 ## 2026-07-09 - [Web Command Console Input State & Log Line Memoization]
 **Learning:** In a web-based command console terminal interface, typing in the single-line input field updates the local `input` state on every keystroke. This causes the entire list of historical console log items to completely re-render and recalculate layouts on every character typed, lagging the keystroke feedback as the log length increases.
 **Action:** Extract log row elements into a separate `<TerminalRow />` component wrapped in `React.memo` with a custom comparison function checking log IDs and timestamps. This cleanly prevents rendering overhead for historical terminal rows when typing in the command console.
+
+## 2026-07-10 - [Express API Gateway OS Metrics Cache & Event Loop Protection]
+**Learning:** Synchronous OS metrics operations (like `os.cpus()`, `os.totalmem()`, and `os.freemem()`) inside active Express routes block the Node.js event loop during high-frequency API polling, causing server-side CPU load spikes and degradations in overall network throughput.
+**Action:** Implement a short (e.g. 2-second) memory cache layer with TTL checks before executing Node's `os` metrics, shielding the Event Loop from blockages while serving identical cached statuses under frequent API polling.
