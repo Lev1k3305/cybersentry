@@ -7,6 +7,31 @@ const router: IRouter = Router();
 // Track server start time for uptime
 const serverStart = Date.now();
 
+// ⚡ Bolt Optimization: Cache OS metrics to avoid expensive, synchronous, and blocking
+// kernel queries on high-frequency status polls and CLI commands.
+interface CachedMetrics {
+  totalMem: number;
+  freeMem: number;
+  cpus: os.CpuInfo[];
+}
+
+let cachedMetrics: CachedMetrics | null = null;
+let lastFetchTime = 0;
+const CACHE_TTL = 2000; // 2 seconds
+
+function getCachedMetrics(): CachedMetrics {
+  const now = Date.now();
+  if (!cachedMetrics || now - lastFetchTime > CACHE_TTL) {
+    cachedMetrics = {
+      totalMem: os.totalmem(),
+      freeMem: os.freemem(),
+      cpus: os.cpus(),
+    };
+    lastFetchTime = now;
+  }
+  return cachedMetrics;
+}
+
 // ─── command definitions ────────────────────────────────────────────────────
 
 // ─── OS Metrics Caching layer ────────────────────────────────────────────────
