@@ -19,3 +19,7 @@
 ## 2026-07-10 - [Express API Gateway OS Metrics Cache & Event Loop Protection]
 **Learning:** Synchronous OS metrics operations (like `os.cpus()`, `os.totalmem()`, and `os.freemem()`) inside active Express routes block the Node.js event loop during high-frequency API polling, causing server-side CPU load spikes and degradations in overall network throughput.
 **Action:** Implement a short (e.g. 2-second) memory cache layer with TTL checks before executing Node's `os` metrics, shielding the Event Loop from blockages while serving identical cached statuses under frequent API polling.
+
+## 2026-07-11 - [StyleSheet Memoization in React Native]
+**Learning:** React Native `StyleSheet.create` reconstructs style objects on every render. If a component has a high-frequency render trigger (such as a 1-second interval timer tick), calling `StyleSheet.create` on every render causes redundant layout and native bridge registry operations.
+**Action:** Wrap `StyleSheet.create` inside `React.useMemo` (with dependencies like stable color references, insets, and platform-specific flags) to preserve correct styling while preventing performance overhead on every tick.
