@@ -61,7 +61,12 @@ export default function StatusScreen() {
 
   const uptimeSecs = status ? status.uptime + tick : 0;
 
-  const s = StyleSheet.create({
+  // ⚡ Bolt Optimization: Memoize stylesheet creation using React.useMemo.
+  // The status screen updates its local uptime tick state every second, which triggers a complete
+  // re-render of this component. By wrapping the StyleSheet.create in React.useMemo and only
+  // recalculating it when colors, safe area insets, or the isWeb platform flag changes, we completely
+  // bypass expensive stylesheet reconstruction and native style registry bindings on every single tick.
+  const s = React.useMemo(() => StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -169,7 +174,7 @@ export default function StatusScreen() {
       textAlign: 'center',
       marginTop: 40,
     },
-  });
+  }), [colors, insets, isWeb]);
 
   return (
     <View style={s.container}>
