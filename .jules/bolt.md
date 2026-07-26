@@ -20,6 +20,6 @@
 **Learning:** Synchronous OS metrics operations (like `os.cpus()`, `os.totalmem()`, and `os.freemem()`) inside active Express routes block the Node.js event loop during high-frequency API polling, causing server-side CPU load spikes and degradations in overall network throughput.
 **Action:** Implement a short (e.g. 2-second) memory cache layer with TTL checks before executing Node's `os` metrics, shielding the Event Loop from blockages while serving identical cached statuses under frequent API polling.
 
-## 2026-07-11 - [React Native StyleSheet Memoization with useMemo]
-**Learning:** In React Native screens with high-frequency state updates (such as a 1-second local uptime tick counter), calling `StyleSheet.create` inside the component body on every render leads to expensive stylesheet reconstruction and native style registry re-registration, increasing garbage collection and bridge overhead.
-**Action:** Wrap the dynamic/theme-dependent stylesheet in `React.useMemo` (dependent on stable objects like colors, insets, and isWeb) to completely bypass stylesheet recreation and registry re-registration on every single tick.
+## 2026-07-11 - [StyleSheet Memoization in React Native]
+**Learning:** React Native `StyleSheet.create` reconstructs style objects on every render. If a component has a high-frequency render trigger (such as a 1-second interval timer tick), calling `StyleSheet.create` on every render causes redundant layout and native bridge registry operations.
+**Action:** Wrap `StyleSheet.create` inside `React.useMemo` (with dependencies like stable color references, insets, and platform-specific flags) to preserve correct styling while preventing performance overhead on every tick.

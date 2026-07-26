@@ -61,120 +61,122 @@ export default function StatusScreen() {
 
   const uptimeSecs = status ? status.uptime + tick : 0;
 
-  // ⚡ Bolt Optimization: Memoize stylesheet creation using React.useMemo.
-  // The status screen updates its local uptime tick state every second, which triggers a complete
-  // re-render of this component. By wrapping the StyleSheet.create in React.useMemo and only
-  // recalculating it when colors, safe area insets, or the isWeb platform flag changes, we completely
-  // bypass expensive stylesheet reconstruction and native style registry bindings on every single tick.
-  const s = React.useMemo(() => StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-      paddingTop: isWeb ? 67 : insets.top,
-      paddingBottom: isWeb ? 34 + 50 : insets.bottom,
-    },
-    header: {
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    headerTitle: {
-      fontFamily: 'JetBrainsMono_700Bold',
-      fontSize: 14,
-      color: colors.primary,
-      letterSpacing: 2,
-    },
-    headerSub: {
-      fontFamily: 'JetBrainsMono_400Regular',
-      fontSize: 11,
-      color: colors.mutedForeground,
-      marginTop: 2,
-    },
-    section: {
-      marginTop: 16,
-      paddingHorizontal: 16,
-    },
-    sectionLabel: {
-      fontFamily: 'JetBrainsMono_700Bold',
-      fontSize: 10,
-      color: colors.accent,
-      letterSpacing: 2,
-      marginBottom: 10,
-    },
-    card: {
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: colors.radius,
-      padding: 14,
-      marginBottom: 8,
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 6,
-    },
-    metricLabel: {
-      fontFamily: 'JetBrainsMono_400Regular',
-      fontSize: 12,
-      color: colors.mutedForeground,
-    },
-    metricValue: {
-      fontFamily: 'JetBrainsMono_700Bold',
-      fontSize: 14,
-      color: colors.primary,
-    },
-    uptimeCard: {
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: colors.radius,
-      padding: 14,
-      marginBottom: 8,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    uptimeLabel: {
-      fontFamily: 'JetBrainsMono_400Regular',
-      fontSize: 12,
-      color: colors.mutedForeground,
-    },
-    uptimeValue: {
-      fontFamily: 'JetBrainsMono_700Bold',
-      fontSize: 18,
-      color: colors.primary,
-    },
-    moduleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 10,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    moduleName: {
-      fontFamily: 'JetBrainsMono_400Regular',
-      fontSize: 12,
-      color: colors.foreground,
-      flex: 1,
-    },
-    moduleLatency: {
-      fontFamily: 'JetBrainsMono_400Regular',
-      fontSize: 11,
-      color: colors.mutedForeground,
-      marginRight: 10,
-    },
-    loadingText: {
-      fontFamily: 'JetBrainsMono_400Regular',
-      fontSize: 12,
-      color: colors.mutedForeground,
-      textAlign: 'center',
-      marginTop: 40,
-    },
-  }), [colors, insets, isWeb]);
+  // ⚡ Bolt Optimization: Memoize StyleSheet creation inside StatusScreen.
+  // Since StatusScreen has a high-frequency 1-second interval tick updating local state,
+  // calling StyleSheet.create inside the render function on every single second forces React Native
+  // to repeatedly reconstruct the entire stylesheet object and register styles on the native side.
+  // Memoizing it using React.useMemo prevents this overhead, keeping UI transitions and ticks extremely fast.
+  const s = React.useMemo(() => {
+    return StyleSheet.create({
+      container: {
+        flex: 1,
+        backgroundColor: colors.background,
+        paddingTop: isWeb ? 67 : insets.top,
+        paddingBottom: isWeb ? 34 + 50 : insets.bottom,
+      },
+      header: {
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      },
+      headerTitle: {
+        fontFamily: 'JetBrainsMono_700Bold',
+        fontSize: 14,
+        color: colors.primary,
+        letterSpacing: 2,
+      },
+      headerSub: {
+        fontFamily: 'JetBrainsMono_400Regular',
+        fontSize: 11,
+        color: colors.mutedForeground,
+        marginTop: 2,
+      },
+      section: {
+        marginTop: 16,
+        paddingHorizontal: 16,
+      },
+      sectionLabel: {
+        fontFamily: 'JetBrainsMono_700Bold',
+        fontSize: 10,
+        color: colors.accent,
+        letterSpacing: 2,
+        marginBottom: 10,
+      },
+      card: {
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: colors.radius,
+        padding: 14,
+        marginBottom: 8,
+      },
+      row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 6,
+      },
+      metricLabel: {
+        fontFamily: 'JetBrainsMono_400Regular',
+        fontSize: 12,
+        color: colors.mutedForeground,
+      },
+      metricValue: {
+        fontFamily: 'JetBrainsMono_700Bold',
+        fontSize: 14,
+        color: colors.primary,
+      },
+      uptimeCard: {
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: colors.radius,
+        padding: 14,
+        marginBottom: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      },
+      uptimeLabel: {
+        fontFamily: 'JetBrainsMono_400Regular',
+        fontSize: 12,
+        color: colors.mutedForeground,
+      },
+      uptimeValue: {
+        fontFamily: 'JetBrainsMono_700Bold',
+        fontSize: 18,
+        color: colors.primary,
+      },
+      moduleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      },
+      moduleName: {
+        fontFamily: 'JetBrainsMono_400Regular',
+        fontSize: 12,
+        color: colors.foreground,
+        flex: 1,
+      },
+      moduleLatency: {
+        fontFamily: 'JetBrainsMono_400Regular',
+        fontSize: 11,
+        color: colors.mutedForeground,
+        marginRight: 10,
+      },
+      loadingText: {
+        fontFamily: 'JetBrainsMono_400Regular',
+        fontSize: 12,
+        color: colors.mutedForeground,
+        textAlign: 'center',
+        marginTop: 40,
+      },
+    });
+  }, [colors, insets, isWeb]);
 
   return (
     <View style={s.container}>
