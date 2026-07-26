@@ -168,31 +168,21 @@ def check_spam_patterns(normalized: str) -> Optional[dict]:
 # ─── Global HTTP Client Connection Pool ───────────────────────────────────────
 # We use a single shared httpx.AsyncClient initialized during FastAPI lifespan
 # to take advantage of HTTP connection pooling and avoid expensive TCP/TLS handshakes.
-http_client: httpx.AsyncClient | None = None
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global http_client
-    http_client = httpx.AsyncClient(timeout=15.0)
-    try:
-        yield
-    finally:
-        await http_client.aclose()
-
-
-# ─── Phone: numlookupapi.com ──────────────────────────────────────────────────
-
-# Global HTTP client to leverage HTTP connection pooling and avoid expensive TCP/TLS handshakes
 http_client: Optional[httpx.AsyncClient] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global http_client
     # Initialize a single, shared, global AsyncClient managed via FastAPI lifespan context manager
-    http_client = httpx.AsyncClient()
-    yield
-    # Ensure the client is properly closed upon shutdown
-    await http_client.aclose()
+    http_client = httpx.AsyncClient(timeout=15.0)
+    try:
+        yield
+    finally:
+        # Ensure the client is properly closed upon shutdown
+        await http_client.aclose()
+
+
+# ─── Phone: numlookupapi.com ──────────────────────────────────────────────────
 
 
 async def numlookup_validate(phone: str) -> dict:
