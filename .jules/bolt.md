@@ -23,3 +23,7 @@
 ## 2026-07-11 - [StyleSheet Memoization in React Native]
 **Learning:** React Native `StyleSheet.create` reconstructs style objects on every render. If a component has a high-frequency render trigger (such as a 1-second interval timer tick), calling `StyleSheet.create` on every render causes redundant layout and native bridge registry operations.
 **Action:** Wrap `StyleSheet.create` inside `React.useMemo` (with dependencies like stable color references, insets, and platform-specific flags) to preserve correct styling while preventing performance overhead on every tick.
+
+## 2026-07-12 - [Express API Gateway Precomputed OS Metrics Caching]
+**Learning:** In polling/status-based microservice architectures, caching only raw node metrics (like `os.cpus()`) still leaves heavy mathematical logic and nested array reductions (`cpus.reduce(...)`) to run on every single client request/poll. With high core counts and high polling frequency, this creates redundant server-side CPU utilization and garbage collection pressure.
+**Action:** Precalculate and cache computed properties (e.g., `cpuLoad` and `usedMemPct` floats) inside the memory caching layer alongside raw metrics, shielding both API routes and terminal command statuses from doing any runtime computation.
