@@ -12,24 +12,58 @@ const serverStart = Date.now();
 // ─── OS Metrics Caching layer ────────────────────────────────────────────────
 // os.cpus(), os.totalmem(), and os.freemem() can be heavy to call on every tick of poll/command requests.
 // Caching with a short TTL (e.g. 2000ms) avoids blocking the Event Loop on high polling frequency.
+// ⚡ Bolt Optimization: Precalculate cpuLoad and usedMemPct during cache updates to bypass
+// heavy array reductions, divisions, and object key/value parsing on every single poll request.
 interface CachedMetrics {
   cpus: os.CpuInfo[];
   totalMem: number;
   freeMem: number;
   lastUpdated: number;
+  cpuLoadRound: number;
+  usedMemPctRound: number;
+  cpuLoadFloat: number;
+  usedMemPctFloat: number;
 }
 
 let cachedMetrics: CachedMetrics | null = null;
 const METRICS_TTL = 2000; // 2 seconds TTL
 
-function getOSMetrics(): { cpus: os.CpuInfo[]; totalMem: number; freeMem: number } {
+function getOSMetrics(): CachedMetrics {
   const now = Date.now();
   if (!cachedMetrics || now - cachedMetrics.lastUpdated > METRICS_TTL) {
+    const cpus = os.cpus();
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+
+    // Integer rounded values for 'status' command console output
+    const usedMemPctRound = Math.round(((totalMem - freeMem) / totalMem) * 100);
+    const cpuLoadRound = cpus.reduce((sum, cpu) => {
+      const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
+      return sum + Math.round((1 - cpu.times.idle / total) * 100);
+    }, 0) / cpus.length;
+
+    // High-precision float values (1 decimal) for /system/status web and mobile polling dashboard
+    const usedMemPctFloat = parseFloat(
+      (((totalMem - freeMem) / totalMem) * 100).toFixed(1)
+    );
+    const cpuLoadFloat = parseFloat(
+      (
+        cpus.reduce((sum, cpu) => {
+          const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
+          return sum + (1 - cpu.times.idle / total) * 100;
+        }, 0) / cpus.length
+      ).toFixed(1)
+    );
+
     cachedMetrics = {
-      cpus: os.cpus(),
-      totalMem: os.totalmem(),
-      freeMem: os.freemem(),
+      cpus,
+      totalMem,
+      freeMem,
       lastUpdated: now,
+      cpuLoadRound,
+      usedMemPctRound,
+      cpuLoadFloat,
+      usedMemPctFloat,
     };
   }
   return cachedMetrics;
@@ -58,24 +92,18 @@ const COMMANDS: Record<
   }),
 
   status: () => {
-    const { cpus, totalMem, freeMem } = getOSMetrics();
-    const usedMemPct = Math.round(((totalMem - freeMem) / totalMem) * 100);
+    const metrics = getOSMetrics();
     const uptimeSec = Math.floor((Date.now() - serverStart) / 1000);
     const hh = Math.floor(uptimeSec / 3600).toString().padStart(2, "0");
     const mm = Math.floor((uptimeSec % 3600) / 60).toString().padStart(2, "0");
     const ss = (uptimeSec % 60).toString().padStart(2, "0");
 
-    const cpuLoad = cpus.reduce((sum, cpu) => {
-      const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
-      return sum + Math.round((1 - cpu.times.idle / total) * 100);
-    }, 0) / cpus.length;
-
     return {
       type: "success",
       output: [
         "[ СТАТУС СИСТЕМЫ ]",
-        `  ЦПУ        : ${Math.round(cpuLoad)}%`,
-        `  ПАМЯТЬ     : ${usedMemPct}%`,
+        `  ЦПУ        : ${Math.round(metrics.cpuLoadRound)}%`,
+        `  ПАМЯТЬ     : ${metrics.usedMemPctRound}%`,
         `  АПТАЙМ     : ${hh}:${mm}:${ss}`,
         `  ОС         : ${os.platform()} ${os.arch()}`,
         `  ПЕРЕХВАТ   : АКТИВЕН`,
@@ -190,20 +218,7 @@ router.post("/command", async (req, res): Promise<void> => {
 // ─── GET /system/status ─────────────────────────────────────────────────────
 
 router.get("/system/status", async (_req, res): Promise<void> => {
-  const { cpus, totalMem, freeMem } = getOSMetrics();
-  const usedMemPct = parseFloat(
-    (((totalMem - freeMem) / totalMem) * 100).toFixed(1)
-  );
-
-  const cpuLoad = parseFloat(
-    (
-      cpus.reduce((sum, cpu) => {
-        const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
-        return sum + (1 - cpu.times.idle / total) * 100;
-      }, 0) / cpus.length
-    ).toFixed(1)
-  );
-
+  const metrics = getOSMetrics();
   const uptimeSec = Math.floor((Date.now() - serverStart) / 1000);
 
   const modules = [
@@ -215,8 +230,8 @@ router.get("/system/status", async (_req, res): Promise<void> => {
   ];
 
   res.json({
-    cpu: cpuLoad,
-    memory: usedMemPct,
+    cpu: metrics.cpuLoadFloat,
+    memory: metrics.usedMemPctFloat,
     uptime: uptimeSec,
     modules,
     timestamp: new Date().toISOString(),
