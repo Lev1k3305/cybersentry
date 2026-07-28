@@ -12,12 +12,18 @@ const serverStart = Date.now();
 // ─── OS Metrics Caching layer ────────────────────────────────────────────────
 // os.cpus(), os.totalmem(), and os.freemem() can be heavy to call on every tick of poll/command requests.
 // Caching with a short TTL (e.g. 2000ms) avoids blocking the Event Loop on high polling frequency.
-// ⚡ Bolt Optimization: Precalculate cpuLoad and usedMemPct during cache updates to bypass
-// heavy array reductions, divisions, and object key/value parsing on every single poll request.
+//
+// ⚡ Bolt Optimization: Precalculate and cache computed cpuLoad and usedMemPct.
+// Previously, nested reductions on os.cpus() times and memory percentage calculations were executed
+// on every single incoming API polling or command request, adding CPU load and garbage collection pressure.
+// By computing these values once inside the 2-second cache refresh block, we bypass these calculations
+// completely for all subsequent concurrent polling requests, dramatically lowering CPU usage.
 interface CachedMetrics {
   cpus: os.CpuInfo[];
   totalMem: number;
   freeMem: number;
+  cpuLoad: number;      // Precomputed average CPU load percentage (float)
+  usedMemPct: number;   // Precomputed memory usage percentage (float)
   lastUpdated: number;
   cpuLoadRound: number;
   usedMemPctRound: number;
