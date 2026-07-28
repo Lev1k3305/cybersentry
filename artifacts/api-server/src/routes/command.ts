@@ -25,6 +25,10 @@ interface CachedMetrics {
   cpuLoad: number;      // Precomputed average CPU load percentage (float)
   usedMemPct: number;   // Precomputed memory usage percentage (float)
   lastUpdated: number;
+  cpuLoadRound: number;
+  usedMemPctRound: number;
+  cpuLoadFloat: number;
+  usedMemPctFloat: number;
 }
 
 let cachedMetrics: CachedMetrics | null = null;
@@ -37,11 +41,18 @@ function getOSMetrics(): CachedMetrics {
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
 
-    const usedMemPct = parseFloat(
+    // Integer rounded values for 'status' command console output
+    const usedMemPctRound = Math.round(((totalMem - freeMem) / totalMem) * 100);
+    const cpuLoadRound = cpus.reduce((sum, cpu) => {
+      const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
+      return sum + Math.round((1 - cpu.times.idle / total) * 100);
+    }, 0) / cpus.length;
+
+    // High-precision float values (1 decimal) for /system/status web and mobile polling dashboard
+    const usedMemPctFloat = parseFloat(
       (((totalMem - freeMem) / totalMem) * 100).toFixed(1)
     );
-
-    const cpuLoad = parseFloat(
+    const cpuLoadFloat = parseFloat(
       (
         cpus.reduce((sum, cpu) => {
           const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
@@ -54,9 +65,11 @@ function getOSMetrics(): CachedMetrics {
       cpus,
       totalMem,
       freeMem,
-      cpuLoad,
-      usedMemPct,
       lastUpdated: now,
+      cpuLoadRound,
+      usedMemPctRound,
+      cpuLoadFloat,
+      usedMemPctFloat,
     };
   }
   return cachedMetrics;
@@ -85,7 +98,6 @@ const COMMANDS: Record<
   }),
 
   status: () => {
-    // ⚡ Bolt Optimization: Use precomputed and cached cpuLoad and usedMemPct
     const metrics = getOSMetrics();
     const uptimeSec = Math.floor((Date.now() - serverStart) / 1000);
     const hh = Math.floor(uptimeSec / 3600).toString().padStart(2, "0");
@@ -96,8 +108,8 @@ const COMMANDS: Record<
       type: "success",
       output: [
         "[ СТАТУС СИСТЕМЫ ]",
-        `  ЦПУ        : ${Math.round(metrics.cpuLoad)}%`,
-        `  ПАМЯТЬ     : ${Math.round(metrics.usedMemPct)}%`,
+        `  ЦПУ        : ${Math.round(metrics.cpuLoadRound)}%`,
+        `  ПАМЯТЬ     : ${metrics.usedMemPctRound}%`,
         `  АПТАЙМ     : ${hh}:${mm}:${ss}`,
         `  ОС         : ${os.platform()} ${os.arch()}`,
         `  ПЕРЕХВАТ   : АКТИВЕН`,
@@ -212,7 +224,6 @@ router.post("/command", async (req, res): Promise<void> => {
 // ─── GET /system/status ─────────────────────────────────────────────────────
 
 router.get("/system/status", async (_req, res): Promise<void> => {
-  // ⚡ Bolt Optimization: Bypass expensive nested array reductions by retrieving precalculated and cached values
   const metrics = getOSMetrics();
   const uptimeSec = Math.floor((Date.now() - serverStart) / 1000);
 
@@ -225,8 +236,8 @@ router.get("/system/status", async (_req, res): Promise<void> => {
   ];
 
   res.json({
-    cpu: metrics.cpuLoad,
-    memory: metrics.usedMemPct,
+    cpu: metrics.cpuLoadFloat,
+    memory: metrics.usedMemPctFloat,
     uptime: uptimeSec,
     modules,
     timestamp: new Date().toISOString(),
