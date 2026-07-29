@@ -27,3 +27,7 @@
 ## 2026-07-12 - [Express API Gateway Precomputed OS Metrics Caching]
 **Learning:** In polling/status-based microservice architectures, caching only raw node metrics (like `os.cpus()`) still leaves heavy mathematical logic and nested array reductions (`cpus.reduce(...)`) to run on every single client request/poll. With high core counts and high polling frequency, this creates redundant server-side CPU utilization and garbage collection pressure.
 **Action:** Precalculate and cache computed properties (e.g., `cpuLoad` and `usedMemPct` floats) inside the memory caching layer alongside raw metrics, shielding both API routes and terminal command statuses from doing any runtime computation.
+
+## 2026-07-13 - [Frontend Result Card & List Render Memoization]
+**Learning:** When a parent component manages a text input (e.g., phone or email search query) updating on every keystroke, any rendered sibling or child components containing complex layouts, SVG icons, lists, or badges will completely re-render on every character typed, creating significant rendering and layout lag.
+**Action:** Wrap immutable result components (such as `PhoneResultCard` and `EmailResultCard`) in `React.memo` to cleanly block redundant re-render cycles while the user is actively typing or editing inside the form inputs.

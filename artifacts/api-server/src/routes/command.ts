@@ -22,8 +22,8 @@ interface CachedMetrics {
   cpus: os.CpuInfo[];
   totalMem: number;
   freeMem: number;
-  cpuLoad: number;      // Precomputed average CPU load percentage (float)
-  usedMemPct: number;   // Precomputed memory usage percentage (float)
+  cpuLoad: number; // Precomputed average CPU load percentage (float)
+  usedMemPct: number; // Precomputed memory usage percentage (float)
   lastUpdated: number;
   cpuLoadRound: number;
   usedMemPctRound: number;
@@ -43,14 +43,15 @@ function getOSMetrics(): CachedMetrics {
 
     // Integer rounded values for 'status' command console output
     const usedMemPctRound = Math.round(((totalMem - freeMem) / totalMem) * 100);
-    const cpuLoadRound = cpus.reduce((sum, cpu) => {
-      const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
-      return sum + Math.round((1 - cpu.times.idle / total) * 100);
-    }, 0) / cpus.length;
+    const cpuLoadRound =
+      cpus.reduce((sum, cpu) => {
+        const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
+        return sum + Math.round((1 - cpu.times.idle / total) * 100);
+      }, 0) / cpus.length;
 
     // High-precision float values (1 decimal) for /system/status web and mobile polling dashboard
     const usedMemPctFloat = parseFloat(
-      (((totalMem - freeMem) / totalMem) * 100).toFixed(1)
+      (((totalMem - freeMem) / totalMem) * 100).toFixed(1),
     );
     const cpuLoadFloat = parseFloat(
       (
@@ -58,7 +59,7 @@ function getOSMetrics(): CachedMetrics {
           const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
           return sum + (1 - cpu.times.idle / total) * 100;
         }, 0) / cpus.length
-      ).toFixed(1)
+      ).toFixed(1),
     );
 
     cachedMetrics = {
@@ -70,14 +71,19 @@ function getOSMetrics(): CachedMetrics {
       usedMemPctRound,
       cpuLoadFloat,
       usedMemPctFloat,
+      cpuLoad: cpuLoadFloat,
+      usedMemPct: usedMemPctFloat,
     };
   }
-  return cachedMetrics;
+  return cachedMetrics!;
 }
 
 const COMMANDS: Record<
   string,
-  () => { output: string; type: "info" | "success" | "error" | "system" | "clear" }
+  () => {
+    output: string;
+    type: "info" | "success" | "error" | "system" | "clear";
+  }
 > = {
   help: () => ({
     type: "info",
@@ -100,8 +106,12 @@ const COMMANDS: Record<
   status: () => {
     const metrics = getOSMetrics();
     const uptimeSec = Math.floor((Date.now() - serverStart) / 1000);
-    const hh = Math.floor(uptimeSec / 3600).toString().padStart(2, "0");
-    const mm = Math.floor((uptimeSec % 3600) / 60).toString().padStart(2, "0");
+    const hh = Math.floor(uptimeSec / 3600)
+      .toString()
+      .padStart(2, "0");
+    const mm = Math.floor((uptimeSec % 3600) / 60)
+      .toString()
+      .padStart(2, "0");
     const ss = (uptimeSec % 60).toString().padStart(2, "0");
 
     return {
@@ -134,19 +144,28 @@ const COMMANDS: Record<
     output: [
       "  ОПЕРАТОР   : ОПЕРАТОР_01",
       "  УРОВЕНЬ    : АЛЬФА-7 [СЕКРЕТНО]",
-      "  СЕССИЯ     : #" + Math.random().toString(36).slice(2, 10).toUpperCase(),
+      "  СЕССИЯ     : #" +
+        Math.random().toString(36).slice(2, 10).toUpperCase(),
       "  ДОСТУП     : ПОЛНЫЙ",
     ].join("\n"),
   }),
 
   uptime: () => {
     const uptimeSec = Math.floor((Date.now() - serverStart) / 1000);
-    const hh = Math.floor(uptimeSec / 3600).toString().padStart(2, "0");
-    const mm = Math.floor((uptimeSec % 3600) / 60).toString().padStart(2, "0");
+    const hh = Math.floor(uptimeSec / 3600)
+      .toString()
+      .padStart(2, "0");
+    const mm = Math.floor((uptimeSec % 3600) / 60)
+      .toString()
+      .padStart(2, "0");
     const ss = (uptimeSec % 60).toString().padStart(2, "0");
     const sysUptime = Math.floor(os.uptime());
-    const sysh = Math.floor(sysUptime / 3600).toString().padStart(2, "0");
-    const sysm = Math.floor((sysUptime % 3600) / 60).toString().padStart(2, "0");
+    const sysh = Math.floor(sysUptime / 3600)
+      .toString()
+      .padStart(2, "0");
+    const sysm = Math.floor((sysUptime % 3600) / 60)
+      .toString()
+      .padStart(2, "0");
     const syss = (sysUptime % 60).toString().padStart(2, "0");
     return {
       type: "info",
@@ -228,10 +247,26 @@ router.get("/system/status", async (_req, res): Promise<void> => {
   const uptimeSec = Math.floor((Date.now() - serverStart) / 1000);
 
   const modules = [
-    { name: "ПЕРЕХВАТЧИК-3", status: "online" as const, latency: Math.floor(Math.random() * 8) + 2 },
-    { name: "ШИФРАТОР-AES", status: "online" as const, latency: Math.floor(Math.random() * 4) + 1 },
-    { name: "СЕТЕВОЙ МОСТ", status: "online" as const, latency: Math.floor(Math.random() * 12) + 5 },
-    { name: "АНАЛИЗАТОР", status: "degraded" as const, latency: Math.floor(Math.random() * 60) + 30 },
+    {
+      name: "ПЕРЕХВАТЧИК-3",
+      status: "online" as const,
+      latency: Math.floor(Math.random() * 8) + 2,
+    },
+    {
+      name: "ШИФРАТОР-AES",
+      status: "online" as const,
+      latency: Math.floor(Math.random() * 4) + 1,
+    },
+    {
+      name: "СЕТЕВОЙ МОСТ",
+      status: "online" as const,
+      latency: Math.floor(Math.random() * 12) + 5,
+    },
+    {
+      name: "АНАЛИЗАТОР",
+      status: "degraded" as const,
+      latency: Math.floor(Math.random() * 60) + 30,
+    },
     { name: "ЖУРНАЛ СОБЫТИЙ", status: "online" as const, latency: 1 },
   ];
 
