@@ -110,7 +110,11 @@ export function EmailScan() {
   );
 }
 
-function EmailResultCard({ result }: { result: any }) {
+// ⚡ Bolt Optimization: Memoize EmailResultCard rendering.
+// Since email scan results are immutable once loaded, and the user types into the input field
+// at high frequency, wrapping EmailResultCard in React.memo prevents expensive component tree,
+// layout, and list (breaches.map) re-rendering on every single keystroke.
+const EmailResultCard = React.memo(function EmailResultCard({ result }: { result: any }) {
   const isCompromised = result.compromised;
   
   return (
@@ -200,4 +204,4 @@ function EmailResultCard({ result }: { result: any }) {
       )}
     </div>
   );
-}
+});

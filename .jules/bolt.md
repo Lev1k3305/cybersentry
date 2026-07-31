@@ -27,3 +27,11 @@
 ## 2026-07-12 - [Express API Gateway Precomputed OS Metrics Caching]
 **Learning:** In polling/status-based microservice architectures, caching only raw node metrics (like `os.cpus()`) still leaves heavy mathematical logic and nested array reductions (`cpus.reduce(...)`) to run on every single client request/poll. With high core counts and high polling frequency, this creates redundant server-side CPU utilization and garbage collection pressure.
 **Action:** Precalculate and cache computed properties (e.g., `cpuLoad` and `usedMemPct` floats) inside the memory caching layer alongside raw metrics, shielding both API routes and terminal command statuses from doing any runtime computation.
+
+## 2026-07-13 - [React High-Frequency Input Typing & Result Card Memoization]
+**Learning:** In screens where a user inputs search parameters (like phone numbers or emails) and renders heavy result components containing maps or complex icons/styles, typing in the input field updates the local text state on every keystroke. This causes the entire parent component to re-render, forcing the heavy result card to redundantly re-render on every single character typed, resulting in keyboard input latency.
+**Action:** Wrap the result card components (`PhoneResultCard` and `EmailResultCard`) in `React.memo` to skip all rendering cycles on local text state changes during typing, maintaining a stable 60 FPS typing experience.
+
+## 2026-07-14 - [FastAPI In-Memory TTL Query Cache for Outbound OSINT Endpoints]
+**Learning:** Outbound network API requests to external OSINT providers (e.g., NumLookup, HIBP) can introduce significant latency and rate limit hazards. Repeat identical lookups are highly redundant and can be served instantly using an async-safe local in-memory cache layer.
+**Action:** Introduce a simple dictionary-based `TTLCache` class with a 5-minute TTL on the Python API microservice to resolve duplicate queries in 0ms, shielding external APIs and speeding up client polling requests.

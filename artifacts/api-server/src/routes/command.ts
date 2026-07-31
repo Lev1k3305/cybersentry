@@ -22,8 +22,6 @@ interface CachedMetrics {
   cpus: os.CpuInfo[];
   totalMem: number;
   freeMem: number;
-  cpuLoad: number;      // Precomputed average CPU load percentage (float)
-  usedMemPct: number;   // Precomputed memory usage percentage (float)
   lastUpdated: number;
   cpuLoadRound: number;
   usedMemPctRound: number;
@@ -72,7 +70,7 @@ function getOSMetrics(): CachedMetrics {
       usedMemPctFloat,
     };
   }
-  return cachedMetrics;
+  return cachedMetrics!;
 }
 
 const COMMANDS: Record<
