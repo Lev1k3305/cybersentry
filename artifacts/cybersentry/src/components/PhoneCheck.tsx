@@ -106,7 +106,11 @@ export function PhoneCheck() {
   );
 }
 
-function PhoneResultCard({ result }: { result: any }) {
+// ⚡ Bolt Optimization: Memoize PhoneResultCard rendering.
+// Since phone check results are immutable once loaded, and the user types into the input field
+// at high frequency, wrapping PhoneResultCard in React.memo prevents expensive component tree
+// and layout re-rendering on every single keystroke.
+const PhoneResultCard = React.memo(function PhoneResultCard({ result }: { result: any }) {
   const isSafe = result.risk === 'safe';
   const isWarning = result.risk === 'warning';
   const isDanger = result.risk === 'danger';
@@ -177,4 +181,4 @@ function PhoneResultCard({ result }: { result: any }) {
       </CardContent>
     </Card>
   );
-}
+});

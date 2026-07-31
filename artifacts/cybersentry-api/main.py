@@ -86,6 +86,35 @@ def add_log(level: str, message: str) -> dict:
     return entry
 
 
+# ─── In-memory Cache with TTL ────────────────────────────────────────────────
+import time
+
+class TTLCache:
+    """
+    ⚡ Bolt Optimization: Async-safe in-memory cache with Time-To-Live (TTL).
+    Caches successful phone / email queries to avoid redundant API latency
+    and provide 0ms processing speed on repeat queries.
+    """
+    def __init__(self, ttl_seconds: float = 300.0):
+        self.ttl = ttl_seconds
+        self.cache: dict[str, tuple[float, any]] = {}
+
+    def get(self, key: str) -> Optional[any]:
+        if key in self.cache:
+            timestamp, value = self.cache[key]
+            if time.time() - timestamp < self.ttl:
+                return value
+            else:
+                del self.cache[key]
+        return None
+
+    def set(self, key: str, value: any):
+        self.cache[key] = (time.time(), value)
+
+phone_cache = TTLCache(ttl_seconds=300.0)  # 5-minute phone lookup cache
+email_cache = TTLCache(ttl_seconds=300.0)  # 5-minute email scan cache
+
+
 # ─── Phone: local spam knowledge base ────────────────────────────────────────
 
 KNOWN_SPAM_NUMBERS: dict[str, dict] = {
@@ -340,122 +369,133 @@ class EmailInput(BaseModel):
 async def phone_check(body: PhoneInput):
     normalized = normalize_phone(body.phone)
 
-    # 1. Local known-bad DB (always checked first, regardless of mode)
-    if normalized in KNOWN_SPAM_NUMBERS:
-        rec = KNOWN_SPAM_NUMBERS[normalized]
-        log_level = "ALERT" if rec["risk"] == "danger" else "WARN"
-        add_log(log_level, f"Проверка номера {normalized} — угроза: {rec['label']}")
-        return {"phone": normalized, "source": "local_db", **rec}
+    # ⚡ Bolt Optimization: check the in-memory TTL cache first
+    cached = phone_cache.get(normalized)
+    if cached is not None:
+        add_log("INFO", f"Репутация номера {normalized} получена из кэша (0ms)")
+        return cached
 
-    # 2. Real API path — only when key is configured
-    if not DEMO_PHONE:
-        carrier_str = ""
-        country_str = ""
-        try:
-            api = await numlookup_validate(normalized)
-            carrier   = api.get("carrier") or ""
-            country   = api.get("country_name") or ""
+    async def _do_check() -> dict:
+        # 1. Local known-bad DB (always checked first, regardless of mode)
+        if normalized in KNOWN_SPAM_NUMBERS:
+            rec = KNOWN_SPAM_NUMBERS[normalized]
+            log_level = "ALERT" if rec["risk"] == "danger" else "WARN"
+            add_log(log_level, f"Проверка номера {normalized} — угроза: {rec['label']}")
+            return {"phone": normalized, "source": "local_db", **rec}
 
-            if carrier:
-                carrier_str = f" Оператор: {carrier}."
-            if country:
-                country_str = f" Страна: {country}."
+        # 2. Real API path — only when key is configured
+        if not DEMO_PHONE:
+            carrier_str = ""
+            country_str = ""
+            try:
+                api = await numlookup_validate(normalized)
+                carrier   = api.get("carrier") or ""
+                country   = api.get("country_name") or ""
 
-            # Pattern check enriched with carrier info
-            pat = check_spam_patterns(normalized)
-            if pat:
-                add_log("WARN", f"Проверка номера {normalized} — подозрительный паттерн: {pat['label']}")
+                if carrier:
+                    carrier_str = f" Оператор: {carrier}."
+                if country:
+                    country_str = f" Страна: {country}."
+
+                # Pattern check enriched with carrier info
+                pat = check_spam_patterns(normalized)
+                if pat:
+                    add_log("WARN", f"Проверка номера {normalized} — подозрительный паттерн: {pat['label']}")
+                    return {
+                        "phone": normalized,
+                        "source": "numlookupapi+local",
+                        "risk": pat["risk"],
+                        "label": pat["label"],
+                        "details": pat["details"] + carrier_str + country_str,
+                        "calls": 0,
+                        "lastSeen": None,
+                    }
+
+                label = "Безопасный номер"
+                if carrier:
+                    label += f" ({carrier})"
+                if country:
+                    label += f", {country}"
+                add_log("OK", f"Проверка номера {normalized} — чист.{carrier_str}{country_str}")
                 return {
                     "phone": normalized,
-                    "source": "numlookupapi+local",
-                    "risk": pat["risk"],
-                    "label": pat["label"],
-                    "details": pat["details"] + carrier_str + country_str,
+                    "source": "numlookupapi",
+                    "risk": "safe",
+                    "label": label,
+                    "details": f"Номер не обнаружен в базах мошеннических звонков. Репутация чистая.{carrier_str}{country_str}",
                     "calls": 0,
                     "lastSeen": None,
                 }
+            except httpx.HTTPStatusError as exc:
+                # Auth failure or explicit API error — signal upstream problem, no demo fallback
+                log.error("numlookupapi HTTP error %s: %s", exc.response.status_code, exc.response.text[:200])
+                add_log("WARN", f"Ошибка провайдера проверки номера (HTTP {exc.response.status_code}) — сервис временно недоступен")
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Провайдер проверки номеров вернул ошибку {exc.response.status_code}. Попробуйте позже.",
+                ) from exc
+            except Exception as exc:
+                log.error("numlookupapi error: %s", exc)
+                add_log("WARN", "Провайдер проверки номеров недоступен — сервис временно не работает")
+                raise HTTPException(
+                    status_code=502,
+                    detail="Сервис проверки номеров временно недоступен. Попробуйте позже.",
+                ) from exc
 
-            label = "Безопасный номер"
-            if carrier:
-                label += f" ({carrier})"
-            if country:
-                label += f", {country}"
-            add_log("OK", f"Проверка номера {normalized} — чист.{carrier_str}{country_str}")
+        # 3. Demo mode — key not configured
+        pat = check_spam_patterns(normalized)
+        if pat:
+            add_log("WARN", f"Проверка номера {normalized} [DEMO] — {pat['label']}")
             return {
                 "phone": normalized,
-                "source": "numlookupapi",
-                "risk": "safe",
-                "label": label,
-                "details": f"Номер не обнаружен в базах мошеннических звонков. Репутация чистая.{carrier_str}{country_str}",
+                "source": "demo",
+                "risk": pat["risk"],
+                "label": pat["label"],
+                "details": pat["details"] + " [DEMO-режим: ключ PHONE_API_KEY не задан]",
                 "calls": 0,
                 "lastSeen": None,
             }
-        except httpx.HTTPStatusError as exc:
-            # Auth failure or explicit API error — signal upstream problem, no demo fallback
-            log.error("numlookupapi HTTP error %s: %s", exc.response.status_code, exc.response.text[:200])
-            add_log("WARN", f"Ошибка провайдера проверки номера (HTTP {exc.response.status_code}) — сервис временно недоступен")
-            raise HTTPException(
-                status_code=502,
-                detail=f"Провайдер проверки номеров вернул ошибку {exc.response.status_code}. Попробуйте позже.",
-            ) from exc
-        except Exception as exc:
-            log.error("numlookupapi error: %s", exc)
-            add_log("WARN", "Провайдер проверки номеров недоступен — сервис временно не работает")
-            raise HTTPException(
-                status_code=502,
-                detail="Сервис проверки номеров временно недоступен. Попробуйте позже.",
-            ) from exc
 
-    # 3. Demo mode — key not configured
-    pat = check_spam_patterns(normalized)
-    if pat:
-        add_log("WARN", f"Проверка номера {normalized} [DEMO] — {pat['label']}")
+        digits     = re.sub(r"\D", "", normalized)
+        last_digit = int(digits[-1]) if digits else 5
+
+        if last_digit <= 1:
+            add_log("ALERT", f"Проверка номера {normalized} [DEMO] — мошеннический паттерн")
+            return {
+                "phone": normalized,
+                "source": "demo",
+                "risk": "danger",
+                "label": "Мошенники: Голосовой фишинг",
+                "details": "Номер замечен в схемах социальной инженерии. Операторы представляются службой безопасности банка. [DEMO-режим]",
+                "calls": 15 + last_digit * 73,
+                "lastSeen": "2026-07-04",
+            }
+        if last_digit <= 3:
+            add_log("WARN", f"Проверка номера {normalized} [DEMO] — подозрительная активность")
+            return {
+                "phone": normalized,
+                "source": "demo",
+                "risk": "warning",
+                "label": "Подозрительная активность",
+                "details": "Зафиксирован в жалобах пользователей. Возможен телемаркетинг. [DEMO-режим]",
+                "calls": 5 + last_digit * 12,
+                "lastSeen": "2026-06-28",
+            }
+
+        add_log("OK", f"Проверка номера {normalized} [DEMO] — чист")
         return {
             "phone": normalized,
             "source": "demo",
-            "risk": pat["risk"],
-            "label": pat["label"],
-            "details": pat["details"] + " [DEMO-режим: ключ PHONE_API_KEY не задан]",
+            "risk": "safe",
+            "label": "Безопасный номер",
+            "details": "Номер отсутствует в базах мошенников и спам-звонков. [DEMO-режим]",
             "calls": 0,
             "lastSeen": None,
         }
 
-    digits     = re.sub(r"\D", "", normalized)
-    last_digit = int(digits[-1]) if digits else 5
-
-    if last_digit <= 1:
-        add_log("ALERT", f"Проверка номера {normalized} [DEMO] — мошеннический паттерн")
-        return {
-            "phone": normalized,
-            "source": "demo",
-            "risk": "danger",
-            "label": "Мошенники: Голосовой фишинг",
-            "details": "Номер замечен в схемах социальной инженерии. Операторы представляются службой безопасности банка. [DEMO-режим]",
-            "calls": 15 + last_digit * 73,
-            "lastSeen": "2026-07-04",
-        }
-    if last_digit <= 3:
-        add_log("WARN", f"Проверка номера {normalized} [DEMO] — подозрительная активность")
-        return {
-            "phone": normalized,
-            "source": "demo",
-            "risk": "warning",
-            "label": "Подозрительная активность",
-            "details": "Зафиксирован в жалобах пользователей. Возможен телемаркетинг. [DEMO-режим]",
-            "calls": 5 + last_digit * 12,
-            "lastSeen": "2026-06-28",
-        }
-
-    add_log("OK", f"Проверка номера {normalized} [DEMO] — чист")
-    return {
-        "phone": normalized,
-        "source": "demo",
-        "risk": "safe",
-        "label": "Безопасный номер",
-        "details": "Номер отсутствует в базах мошенников и спам-звонков. [DEMO-режим]",
-        "calls": 0,
-        "lastSeen": None,
-    }
+    res = await _do_check()
+    phone_cache.set(normalized, res)
+    return res
 
 
 # ─── POST /cybersentry/email ──────────────────────────────────────────────────
@@ -464,153 +504,164 @@ async def phone_check(body: PhoneInput):
 async def email_scan(body: EmailInput):
     email = body.email.strip().lower()
 
-    # 1. HIBP v3 — real lookup when key is configured
-    if not DEMO_BREACH:
-        try:
-            hibp = await hibp_check(email)
-            has_passwords = any("Passwords" in b.get("DataClasses", []) for b in hibp)
-            breaches = [
-                {
-                    "name":      b.get("Title") or b.get("Name"),
-                    "date":      b.get("BreachDate"),
-                    "dataTypes": [_DATA_TYPE_RU.get(t, t) for t in b.get("DataClasses", [])[:6]],
-                    "severity":  classify_severity(b),
+    # ⚡ Bolt Optimization: check the in-memory TTL cache first
+    cached = email_cache.get(email)
+    if cached is not None:
+        add_log("INFO", f"Результаты сканирования email {email} получены из кэша (0ms)")
+        return cached
+
+    async def _do_scan() -> dict:
+        # 1. HIBP v3 — real lookup when key is configured
+        if not DEMO_BREACH:
+            try:
+                hibp = await hibp_check(email)
+                has_passwords = any("Passwords" in b.get("DataClasses", []) for b in hibp)
+                breaches = [
+                    {
+                        "name":      b.get("Title") or b.get("Name"),
+                        "date":      b.get("BreachDate"),
+                        "dataTypes": [_DATA_TYPE_RU.get(t, t) for t in b.get("DataClasses", [])[:6]],
+                        "severity":  classify_severity(b),
+                    }
+                    for b in hibp
+                ]
+                compromised = bool(breaches)
+                risk_score  = risk_score_from_breaches(len(breaches), has_passwords)
+
+                if compromised:
+                    rec = (
+                        "Ваши пароли скомпрометированы! Срочно смените пароли и включите двухфакторную аутентификацию."
+                        if has_passwords else
+                        "Данные обнаружены в публичных утечках. Смените пароль и проверьте настройки безопасности."
+                    )
+                    lvl = "ALERT" if has_passwords else "WARN"
+                else:
+                    rec = "Утечки не обнаружены. Продолжайте использовать надёжные уникальные пароли и 2FA."
+                    lvl = "OK"
+
+                add_log(lvl, f"Проверка email {email} — " +
+                        (f"найдено {len(breaches)} утечек (HIBP)" if compromised else "утечки не найдены (HIBP)"))
+                return {
+                    "email": email,
+                    "source": "hibp",
+                    "compromised": compromised,
+                    "riskScore": risk_score,
+                    "breaches": breaches,
+                    "recommendation": rec,
                 }
-                for b in hibp
-            ]
-            compromised = bool(breaches)
-            risk_score  = risk_score_from_breaches(len(breaches), has_passwords)
+            except httpx.HTTPStatusError as exc:
+                log.error("HIBP HTTP error %s: %s", exc.response.status_code, exc.response.text[:200])
+                add_log("WARN", f"Ошибка HIBP (HTTP {exc.response.status_code}) — сервис временно недоступен")
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Провайдер HIBP вернул ошибку {exc.response.status_code}. Попробуйте позже.",
+                ) from exc
+            except Exception as exc:
+                log.error("HIBP error: %s", exc)
+                add_log("WARN", "Провайдер HIBP недоступен — сервис временно не работает")
+                raise HTTPException(
+                    status_code=502,
+                    detail="Сервис проверки утечек (HIBP) временно недоступен. Попробуйте позже.",
+                ) from exc
 
-            if compromised:
+        # 2. Demo mode — key not configured; try emailrep.io first (free, no key)
+        try:
+            rep = await emailrep_check(email)
+            if rep is not None:
+                details      = rep.get("details") or {}
+                breach_count = int(details.get("breach_count") or 0)
+                breaches_flag = bool(details.get("breaches"))
+                suspicious   = bool(rep.get("suspicious"))
+                compromised  = breaches_flag or breach_count > 0
+                has_passwords = suspicious and breach_count > 2
+                risk_score   = risk_score_from_breaches(breach_count, has_passwords)
+
+                breaches = []
+                if compromised:
+                    for i in range(min(breach_count, 5)):
+                        breaches.append({
+                            "name":      f"Утечка данных #{i + 1}",
+                            "date":      "Дата неизвестна",
+                            "dataTypes": ["Адреса email"] + (["Пароли"] if has_passwords else []),
+                            "severity":  "high" if has_passwords else "medium",
+                        })
+
                 rec = (
-                    "Ваши пароли скомпрометированы! Срочно смените пароли и включите двухфакторную аутентификацию."
-                    if has_passwords else
-                    "Данные обнаружены в публичных утечках. Смените пароль и проверьте настройки безопасности."
+                    "Ваш email обнаружен в базах утечек. Рекомендуем сменить пароль и включить 2FA. (источник: emailrep.io)"
+                    if compromised else
+                    "Утечки не обнаружены. (источник: emailrep.io)"
                 )
-                lvl = "ALERT" if has_passwords else "WARN"
-            else:
-                rec = "Утечки не обнаружены. Продолжайте использовать надёжные уникальные пароли и 2FA."
-                lvl = "OK"
-
-            add_log(lvl, f"Проверка email {email} — " +
-                    (f"найдено {len(breaches)} утечек (HIBP)" if compromised else "утечки не найдены (HIBP)"))
-            return {
-                "email": email,
-                "source": "hibp",
-                "compromised": compromised,
-                "riskScore": risk_score,
-                "breaches": breaches,
-                "recommendation": rec,
-            }
-        except httpx.HTTPStatusError as exc:
-            log.error("HIBP HTTP error %s: %s", exc.response.status_code, exc.response.text[:200])
-            add_log("WARN", f"Ошибка HIBP (HTTP {exc.response.status_code}) — сервис временно недоступен")
-            raise HTTPException(
-                status_code=502,
-                detail=f"Провайдер HIBP вернул ошибку {exc.response.status_code}. Попробуйте позже.",
-            ) from exc
+                lvl = "WARN" if compromised else "OK"
+                add_log(lvl, f"Проверка email {email} — " +
+                        (f"найдено {breach_count} утечек (emailrep.io)" if compromised else "утечки не найдены (emailrep.io)"))
+                return {
+                    "email": email,
+                    "source": "emailrep",
+                    "compromised": compromised,
+                    "riskScore": risk_score,
+                    "breaches": breaches,
+                    "recommendation": rec,
+                }
         except Exception as exc:
-            log.error("HIBP error: %s", exc)
-            add_log("WARN", "Провайдер HIBP недоступен — сервис временно не работает")
-            raise HTTPException(
-                status_code=502,
-                detail="Сервис проверки утечек (HIBP) временно недоступен. Попробуйте позже.",
-            ) from exc
+            log.error("emailrep.io error: %s", exc)
 
-    # 2. Demo mode — key not configured; try emailrep.io first (free, no key)
-    try:
-        rep = await emailrep_check(email)
-        if rep is not None:
-            details      = rep.get("details") or {}
-            breach_count = int(details.get("breach_count") or 0)
-            breaches_flag = bool(details.get("breaches"))
-            suspicious   = bool(rep.get("suspicious"))
-            compromised  = breaches_flag or breach_count > 0
-            has_passwords = suspicious and breach_count > 2
-            risk_score   = risk_score_from_breaches(breach_count, has_passwords)
+        # 3. Full demo fallback (no key + emailrep unavailable)
+        log.warning("[WARN] BREACH_API_KEY не задан и emailrep.io недоступен — активирован полный демо-режим")
+        prefix = email.split("@")[0]
 
-            breaches = []
-            if compromised:
-                for i in range(min(breach_count, 5)):
-                    breaches.append({
-                        "name":      f"Утечка данных #{i + 1}",
-                        "date":      "Дата неизвестна",
-                        "dataTypes": ["Адреса email"] + (["Пароли"] if has_passwords else []),
-                        "severity":  "high" if has_passwords else "medium",
-                    })
-
-            rec = (
-                "Ваш email обнаружен в базах утечек. Рекомендуем сменить пароль и включить 2FA. (источник: emailrep.io)"
-                if compromised else
-                "Утечки не обнаружены. (источник: emailrep.io)"
-            )
-            lvl = "WARN" if compromised else "OK"
-            add_log(lvl, f"Проверка email {email} — " +
-                    (f"найдено {breach_count} утечек (emailrep.io)" if compromised else "утечки не найдены (emailrep.io)"))
+        if email in {"test@example.com", "admin@test.com", "user@mail.ru", "test@test.com"}:
+            add_log("ALERT", f"Проверка email {email} [DEMO] — критические утечки")
             return {
                 "email": email,
-                "source": "emailrep",
-                "compromised": compromised,
-                "riskScore": risk_score,
-                "breaches": breaches,
-                "recommendation": rec,
+                "source": "demo",
+                "compromised": True,
+                "riskScore": 78,
+                "breaches": [
+                    {
+                        "name":      "MegaDataLeak 2023",
+                        "date":      "2023-11-14",
+                        "dataTypes": ["Адреса email", "Пароли", "Имена", "Номера телефонов"],
+                        "severity":  "critical",
+                    },
+                    {
+                        "name":      "ShopBreached.ru 2024",
+                        "date":      "2024-03-20",
+                        "dataTypes": ["Адреса email", "Адреса доставки", "История заказов"],
+                        "severity":  "high",
+                    },
+                ],
+                "recommendation": "Немедленно смените пароли во всех сервисах. Включите двухфакторную аутентификацию. [DEMO-режим]",
             }
-    except Exception as exc:
-        log.error("emailrep.io error: %s", exc)
 
-    # 3. Full demo fallback (no key + emailrep unavailable)
-    log.warning("[WARN] BREACH_API_KEY не задан и emailrep.io недоступен — активирован полный демо-режим")
-    prefix = email.split("@")[0]
-
-    if email in {"test@example.com", "admin@test.com", "user@mail.ru", "test@test.com"}:
-        add_log("ALERT", f"Проверка email {email} [DEMO] — критические утечки")
-        return {
-            "email": email,
-            "source": "demo",
-            "compromised": True,
-            "riskScore": 78,
-            "breaches": [
-                {
-                    "name":      "MegaDataLeak 2023",
-                    "date":      "2023-11-14",
-                    "dataTypes": ["Адреса email", "Пароли", "Имена", "Номера телефонов"],
-                    "severity":  "critical",
-                },
-                {
-                    "name":      "ShopBreached.ru 2024",
-                    "date":      "2024-03-20",
-                    "dataTypes": ["Адреса email", "Адреса доставки", "История заказов"],
+        if len(prefix) % 3 == 0:
+            add_log("WARN", f"Проверка email {email} [DEMO] — найдена утечка")
+            return {
+                "email": email,
+                "source": "demo",
+                "compromised": True,
+                "riskScore": 62,
+                "breaches": [{
+                    "name":      "DataBreach 2024",
+                    "date":      "2024-01-15",
+                    "dataTypes": ["Адреса email", "Пароли", "Даты рождения"],
                     "severity":  "high",
-                },
-            ],
-            "recommendation": "Немедленно смените пароли во всех сервисах. Включите двухфакторную аутентификацию. [DEMO-режим]",
-        }
+                }],
+                "recommendation": "Адрес скомпрометирован. Смените пароль и включите двухфакторную аутентификацию. [DEMO-режим]",
+            }
 
-    if len(prefix) % 3 == 0:
-        add_log("WARN", f"Проверка email {email} [DEMO] — найдена утечка")
+        add_log("OK", f"Проверка email {email} [DEMO] — чист")
         return {
             "email": email,
             "source": "demo",
-            "compromised": True,
-            "riskScore": 62,
-            "breaches": [{
-                "name":      "DataBreach 2024",
-                "date":      "2024-01-15",
-                "dataTypes": ["Адреса email", "Пароли", "Даты рождения"],
-                "severity":  "high",
-            }],
-            "recommendation": "Адрес скомпрометирован. Смените пароль и включите двухфакторную аутентификацию. [DEMO-режим]",
+            "compromised": False,
+            "riskScore": 8,
+            "breaches": [],
+            "recommendation": "Утечки не обнаружены. Используйте надёжные уникальные пароли и двухфакторную аутентификацию. [DEMO-режим]",
         }
 
-    add_log("OK", f"Проверка email {email} [DEMO] — чист")
-    return {
-        "email": email,
-        "source": "demo",
-        "compromised": False,
-        "riskScore": 8,
-        "breaches": [],
-        "recommendation": "Утечки не обнаружены. Используйте надёжные уникальные пароли и двухфакторную аутентификацию. [DEMO-режим]",
-    }
+    res = await _do_scan()
+    email_cache.set(email, res)
+    return res
 
 
 # ─── GET /cybersentry/log ─────────────────────────────────────────────────────
