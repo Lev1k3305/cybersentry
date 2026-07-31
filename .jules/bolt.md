@@ -27,3 +27,7 @@
 ## 2026-07-12 - [Express API Gateway Precomputed OS Metrics Caching]
 **Learning:** In polling/status-based microservice architectures, caching only raw node metrics (like `os.cpus()`) still leaves heavy mathematical logic and nested array reductions (`cpus.reduce(...)`) to run on every single client request/poll. With high core counts and high polling frequency, this creates redundant server-side CPU utilization and garbage collection pressure.
 **Action:** Precalculate and cache computed properties (e.g., `cpuLoad` and `usedMemPct` floats) inside the memory caching layer alongside raw metrics, shielding both API routes and terminal command statuses from doing any runtime computation.
+
+## 2026-07-13 - [CyberSentry Dashboard Result Card Memoization]
+**Learning:** In a search/analysis page with a high-frequency search text input (like PhoneCheck or EmailScan), any local state update on every keystroke forces all child components, including large, nested result cards containing complex layouts and badges (like PhoneResultCard and EmailResultCard), to fully re-render and recalculate layouts. This degrades keystroke responsiveness and wastes CPU cycles.
+**Action:** Wrap result cards (like `PhoneResultCard` and `EmailResultCard`) in `React.memo` with custom comparison logic matching stable fields (e.g., `result.phone` / `result.email` and risk scores). This completely prevents unnecessary re-rendering during search input editing.

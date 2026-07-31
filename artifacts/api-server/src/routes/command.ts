@@ -65,6 +65,8 @@ function getOSMetrics(): CachedMetrics {
       cpus,
       totalMem,
       freeMem,
+      cpuLoad: cpuLoadFloat,
+      usedMemPct: usedMemPctFloat,
       lastUpdated: now,
       cpuLoadRound,
       usedMemPctRound,
@@ -72,7 +74,7 @@ function getOSMetrics(): CachedMetrics {
       usedMemPctFloat,
     };
   }
-  return cachedMetrics;
+  return cachedMetrics as CachedMetrics;
 }
 
 const COMMANDS: Record<
