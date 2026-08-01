@@ -20,7 +20,11 @@ function formatUptime(seconds: number): string {
   return `${h}:${m}:${s}`;
 }
 
-function GaugeBar({ value, color }: { value: number; color: string }) {
+// ⚡ Bolt Optimization: Wrap GaugeBar in React.memo.
+// Since StatusScreen has a high-frequency 1-second interval tick, GaugeBar would normally
+// re-render on every tick. Wrapping it in React.memo completely skips render and useColors() call
+// cycles when the CPU/Memory metric values remain unchanged, boosting performance on mobile devices.
+const GaugeBar = React.memo(function GaugeBar({ value, color }: { value: number; color: string }) {
   const colors = useColors();
   return (
     <View style={[styles.gaugeTrack, { backgroundColor: colors.muted }]}>
@@ -32,14 +36,17 @@ function GaugeBar({ value, color }: { value: number; color: string }) {
       />
     </View>
   );
-}
+});
 
-function StatusDot({ status }: { status: 'online' | 'offline' | 'degraded' }) {
+// ⚡ Bolt Optimization: Wrap StatusDot in React.memo.
+// Prevents status dots of modules from re-rendering and fetching design tokens on every 1-second tick,
+// since backend module statuses only change when status is refetched every 5 seconds.
+const StatusDot = React.memo(function StatusDot({ status }: { status: 'online' | 'offline' | 'degraded' }) {
   const colors = useColors();
   const dotColor =
     status === 'online' ? colors.success : status === 'degraded' ? colors.warning : colors.error;
   return <View style={[styles.dot, { backgroundColor: dotColor }]} />;
-}
+});
 
 export default function StatusScreen() {
   const colors = useColors();
@@ -60,6 +67,15 @@ export default function StatusScreen() {
   }, []);
 
   const uptimeSecs = status ? status.uptime + tick : 0;
+
+  // ⚡ Bolt Optimization: Memoize localized update timestamp formatting.
+  // Instead of parsing Date and constructing localized strings on every single 1-second tick,
+  // we memoize the formatted update time so it only recalculates when status.timestamp actually changes.
+  const formattedUpdateTime = React.useMemo(() => {
+    return status
+      ? `ОБНОВЛЕНО: ${new Date(status.timestamp).toLocaleTimeString('ru-RU')}`
+      : 'ЗАГРУЗКА...';
+  }, [status?.timestamp]);
 
   // ⚡ Bolt Optimization: Memoize StyleSheet creation inside StatusScreen.
   // Since StatusScreen has a high-frequency 1-second interval tick updating local state,
@@ -182,11 +198,7 @@ export default function StatusScreen() {
     <View style={s.container}>
       <View style={s.header}>
         <Text style={s.headerTitle}>DEDSEC//СТАТУС СИСТЕМЫ</Text>
-        <Text style={s.headerSub}>
-          {status
-            ? `ОБНОВЛЕНО: ${new Date(status.timestamp).toLocaleTimeString('ru-RU')}`
-            : 'ЗАГРУЗКА...'}
-        </Text>
+        <Text style={s.headerSub}>{formattedUpdateTime}</Text>
       </View>
 
       {isLoading && !status ? (
