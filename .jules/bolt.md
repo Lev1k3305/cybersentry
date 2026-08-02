@@ -36,6 +36,6 @@
 **Learning:** Outbound network API requests to external OSINT providers (e.g., NumLookup, HIBP) can introduce significant latency and rate limit hazards. Repeat identical lookups are highly redundant and can be served instantly using an async-safe local in-memory cache layer.
 **Action:** Introduce a simple dictionary-based `TTLCache` class with a 5-minute TTL on the Python API microservice to resolve duplicate queries in 0ms, shielding external APIs and speeding up client polling requests.
 
-## 2026-08-01 - [Theme Hook Object Instability and Downstream Memoization Breakers]
-**Learning:** Returning a newly created object reference from custom hooks (like `useColors` returning `{ ...palette, radius }`) on every invocation breaks downstream optimizations. It invalidates `React.memo` components comparing `colors` (e.g. `EntryRow` in `TerminalScreen` re-rendering on 500ms blinks) and triggers `StyleSheet.create` reconstructions inside `React.useMemo` (e.g. `StatusScreen` recreating style objects on 1s interval ticks).
-**Action:** Wrap hook return values in `React.useMemo` with stable dependencies (such as the base palette reference) to maintain referential stability across high-frequency renders.
+## 2026-07-15 - [React Hook return object memoization]
+**Learning:** Custom hooks in React or React Native (like `useColors`) that return newly constructed objects on every invocation invalidate the referential stability of their output. This forces any downstream hooks (such as `useMemo` dependency arrays for StyleSheet configurations) or child components (wrapped in `React.memo`) that depend on the hook's returned value to trigger expensive re-render cascades and style re-registrations.
+**Action:** Wrap any newly constructed objects returned by custom hooks in `useMemo` using the underlying stable references as dependencies (such as static configuration palettes) to maintain strict referential integrity.

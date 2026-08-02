@@ -25,8 +25,11 @@ export function useColors() {
   const palette: typeof colors.light =
     scheme === 'dark' && 'dark' in colors ? colors.dark : colors.light;
 
-  return useMemo(() => ({
-    ...palette,
-    radius: colors.radius,
-  }), [palette]);
+  // ⚡ Bolt Optimization: Memoize the constructed palette object.
+  // Custom hooks (like useColors) returning a newly constructed object ({ ...palette, radius })
+  // on every single call cause downstream hooks (like useMemo dependency arrays for StyleSheets)
+  // or components wrapped in React.memo/React.useMemo to fail their shallow/referential equality checks,
+  // triggering expensive re-render cascades. Wrapping the returned object in useMemo based on
+  // the stable underlying palette reference fully solves this performance bottleneck.
+  return useMemo(() => ({ ...palette, radius: colors.radius }), [palette]);
 }
