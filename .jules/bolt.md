@@ -28,14 +28,6 @@
 **Learning:** In polling/status-based microservice architectures, caching only raw node metrics (like `os.cpus()`) still leaves heavy mathematical logic and nested array reductions (`cpus.reduce(...)`) to run on every single client request/poll. With high core counts and high polling frequency, this creates redundant server-side CPU utilization and garbage collection pressure.
 **Action:** Precalculate and cache computed properties (e.g., `cpuLoad` and `usedMemPct` floats) inside the memory caching layer alongside raw metrics, shielding both API routes and terminal command statuses from doing any runtime computation.
 
-## 2026-07-13 - [React High-Frequency Input Typing & Result Card Memoization]
-**Learning:** In screens where a user inputs search parameters (like phone numbers or emails) and renders heavy result components containing maps or complex icons/styles, typing in the input field updates the local text state on every keystroke. This causes the entire parent component to re-render, forcing the heavy result card to redundantly re-render on every single character typed, resulting in keyboard input latency.
-**Action:** Wrap the result card components (`PhoneResultCard` and `EmailResultCard`) in `React.memo` to skip all rendering cycles on local text state changes during typing, maintaining a stable 60 FPS typing experience.
-
-## 2026-07-14 - [FastAPI In-Memory TTL Query Cache for Outbound OSINT Endpoints]
-**Learning:** Outbound network API requests to external OSINT providers (e.g., NumLookup, HIBP) can introduce significant latency and rate limit hazards. Repeat identical lookups are highly redundant and can be served instantly using an async-safe local in-memory cache layer.
-**Action:** Introduce a simple dictionary-based `TTLCache` class with a 5-minute TTL on the Python API microservice to resolve duplicate queries in 0ms, shielding external APIs and speeding up client polling requests.
-
-## 2026-07-15 - [React Hook return object memoization]
-**Learning:** Custom hooks in React or React Native (like `useColors`) that return newly constructed objects on every invocation invalidate the referential stability of their output. This forces any downstream hooks (such as `useMemo` dependency arrays for StyleSheet configurations) or child components (wrapped in `React.memo`) that depend on the hook's returned value to trigger expensive re-render cascades and style re-registrations.
-**Action:** Wrap any newly constructed objects returned by custom hooks in `useMemo` using the underlying stable references as dependencies (such as static configuration palettes) to maintain strict referential integrity.
+## 2026-07-13 - [Frontend Result Card & List Render Memoization]
+**Learning:** When a parent component manages a text input (e.g., phone or email search query) updating on every keystroke, any rendered sibling or child components containing complex layouts, SVG icons, lists, or badges will completely re-render on every character typed, creating significant rendering and layout lag.
+**Action:** Wrap immutable result components (such as `PhoneResultCard` and `EmailResultCard`) in `React.memo` to cleanly block redundant re-render cycles while the user is actively typing or editing inside the form inputs.

@@ -1,17 +1,26 @@
-import React from 'react';
-import { Mail, ShieldAlert, Fingerprint, Database, Calendar, AlertCircle, X, AlertCircle as AlertIcon } from 'lucide-react';
-import { useScanEmail } from '@workspace/api-client-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import React from "react";
+import {
+  Mail,
+  ShieldAlert,
+  Fingerprint,
+  Database,
+  Calendar,
+  AlertCircle,
+  X,
+  AlertCircle as AlertIcon,
+} from "lucide-react";
+import { useScanEmail } from "@workspace/api-client-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export function EmailScan() {
-  const [email, setEmail] = React.useState('');
+  const [email, setEmail] = React.useState("");
   const scanEmail = useScanEmail();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -28,13 +37,17 @@ export function EmailScan() {
           СКАНЕР УТЕЧЕК АККАУНТОВ
         </h3>
         <p className="text-muted-foreground text-sm">
-          Проверьте email по базам скомпрометированных данных (пароли, личные данные).
+          Проверьте email по базам скомпрометированных данных (пароли, личные
+          данные).
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email-input" className="text-sm font-medium font-mono text-foreground">
+          <Label
+            htmlFor="email-input"
+            className="text-sm font-medium font-mono text-foreground"
+          >
             Адрес электронной почты <span className="text-destructive">*</span>
           </Label>
           <div className="flex gap-3">
@@ -54,9 +67,9 @@ export function EmailScan() {
                 <button
                   type="button"
                   onClick={() => {
-                    setEmail('');
+                    setEmail("");
                     scanEmail.reset();
-                    document.getElementById('email-input')?.focus();
+                    document.getElementById("email-input")?.focus();
                   }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring p-1 rounded-sm"
                   aria-label="Очистить"
@@ -71,7 +84,7 @@ export function EmailScan() {
               className="py-6 px-8 font-mono tracking-wide"
               disabled={scanEmail.isPending || !email.trim()}
             >
-              {scanEmail.isPending ? 'СКАНИРОВАНИЕ...' : 'Сканировать'}
+              {scanEmail.isPending ? "СКАНИРОВАНИЕ..." : "Сканировать"}
             </Button>
           </div>
         </div>
@@ -81,11 +94,15 @@ export function EmailScan() {
       </form>
 
       {scanEmail.isError && (
-        <Alert variant="destructive" className="font-mono bg-destructive/5 border-destructive/20">
+        <Alert
+          variant="destructive"
+          className="font-mono bg-destructive/5 border-destructive/20"
+        >
           <AlertIcon className="h-4 w-4" />
           <AlertTitle className="font-bold">Ошибка сканирования</AlertTitle>
           <AlertDescription>
-            Не удалось выполнить запрос сканирования утечек. Пожалуйста, попробуйте позже.
+            Не удалось выполнить запрос сканирования утечек. Пожалуйста,
+            попробуйте позже.
           </AlertDescription>
         </Alert>
       )}
@@ -111,15 +128,21 @@ export function EmailScan() {
 }
 
 // ⚡ Bolt Optimization: Memoize EmailResultCard rendering.
-// Since email scan results are immutable once loaded, and the user types into the input field
-// at high frequency, wrapping EmailResultCard in React.memo prevents expensive component tree,
-// layout, and list (breaches.map) re-rendering on every single keystroke.
-const EmailResultCard = React.memo(function EmailResultCard({ result }: { result: any }) {
+// Since the email breach scan results are immutable once fetched, wrapping EmailResultCard in React.memo
+// completely avoids costly re-renders of the breach list items, severities, dataTypes, progress bars,
+// and other complex presentation components when the user continues typing/editing in the search input field.
+const EmailResultCard = React.memo(function EmailResultCard({
+  result,
+}: {
+  result: any;
+}) {
   const isCompromised = result.compromised;
-  
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <Card className={`border ${isCompromised ? 'border-destructive/40 bg-destructive/5' : 'border-safe/40 bg-safe/5'}`}>
+      <Card
+        className={`border ${isCompromised ? "border-destructive/40 bg-destructive/5" : "border-safe/40 bg-safe/5"}`}
+      >
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
             <div className="space-y-2">
@@ -130,27 +153,35 @@ const EmailResultCard = React.memo(function EmailResultCard({ result }: { result
                   <Database className="w-8 h-8 text-safe" />
                 )}
                 <h4 className="font-mono text-xl font-bold text-foreground">
-                  Статус: {isCompromised ? 'Скомпрометирован' : 'Чисто'}
+                  Статус: {isCompromised ? "Скомпрометирован" : "Чисто"}
                 </h4>
               </div>
               <p className="text-muted-foreground font-mono">{result.email}</p>
             </div>
-            
+
             <div className="w-full md:w-64 space-y-2">
               <div className="flex justify-between text-sm font-mono">
                 <span className="text-muted-foreground">Оценка риска</span>
-                <span className={result.riskScore > 50 ? 'text-destructive font-bold' : 'text-safe font-bold'}>
+                <span
+                  className={
+                    result.riskScore > 50
+                      ? "text-destructive font-bold"
+                      : "text-safe font-bold"
+                  }
+                >
                   {result.riskScore} / 100
                 </span>
               </div>
-              <Progress 
-                value={result.riskScore} 
-                className="h-2" 
-                indicatorClassName={result.riskScore > 50 ? 'bg-destructive' : 'bg-safe'}
+              <Progress
+                value={result.riskScore}
+                className="h-2"
+                indicatorClassName={
+                  result.riskScore > 50 ? "bg-destructive" : "bg-safe"
+                }
               />
             </div>
           </div>
-          
+
           {result.recommendation && (
             <div className="mt-6 p-4 bg-background/50 border border-border/50 rounded-md flex gap-3">
               <AlertCircle className="w-5 h-5 text-primary shrink-0" />
@@ -165,32 +196,43 @@ const EmailResultCard = React.memo(function EmailResultCard({ result }: { result
           <h4 className="font-mono font-bold text-lg text-foreground uppercase tracking-widest">
             Обнаруженные утечки ({result.breaches.length})
           </h4>
-          
+
           <div className="grid grid-cols-1 gap-3">
             {result.breaches.map((breach: any, idx: number) => (
-              <Card key={idx} className="border-border/40 bg-secondary/20 hover:bg-secondary/40 transition-colors">
+              <Card
+                key={idx}
+                className="border-border/40 bg-secondary/20 hover:bg-secondary/40 transition-colors"
+              >
                 <CardContent className="p-4 flex flex-col md:flex-row justify-between gap-4">
                   <div>
-                    <h5 className="font-bold font-mono text-destructive mb-1">{breach.name}</h5>
+                    <h5 className="font-bold font-mono text-destructive mb-1">
+                      {breach.name}
+                    </h5>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Calendar className="w-3 h-3" />
                       {breach.date}
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col md:items-end gap-2">
-                    <Badge variant="outline" className={`
-                      ${breach.severity === 'critical' ? 'border-destructive text-destructive' : ''}
-                      ${breach.severity === 'high' ? 'border-warning text-warning' : ''}
-                      ${breach.severity === 'medium' ? 'border-primary text-primary' : ''}
-                      ${breach.severity === 'low' ? 'border-muted text-muted-foreground' : ''}
+                    <Badge
+                      variant="outline"
+                      className={`
+                      ${breach.severity === "critical" ? "border-destructive text-destructive" : ""}
+                      ${breach.severity === "high" ? "border-warning text-warning" : ""}
+                      ${breach.severity === "medium" ? "border-primary text-primary" : ""}
+                      ${breach.severity === "low" ? "border-muted text-muted-foreground" : ""}
                       uppercase tracking-wider font-mono text-[10px]
-                    `}>
+                    `}
+                    >
                       Угроза: {breach.severity}
                     </Badge>
                     <div className="flex flex-wrap gap-1 md:justify-end">
                       {breach.dataTypes.map((dt: string, i: number) => (
-                        <span key={i} className="text-[10px] bg-background px-2 py-0.5 rounded text-muted-foreground border border-border/50">
+                        <span
+                          key={i}
+                          className="text-[10px] bg-background px-2 py-0.5 rounded text-muted-foreground border border-border/50"
+                        >
                           {dt}
                         </span>
                       ))}
