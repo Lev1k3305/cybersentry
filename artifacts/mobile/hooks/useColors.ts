@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import colors from '@/constants/colors';
 
@@ -12,10 +13,23 @@ import colors from '@/constants/colors';
  * When a sibling web artifact's dark tokens are synced into a `dark`
  * key, this hook will automatically switch palettes based on the
  * device's appearance setting.
+ *
+ * ⚡ Bolt Optimization: Wrap returned palette object in React.useMemo.
+ * Since palette objects are static references from colors.ts, we use the reference
+ * of palette as a dependency. This ensures we return the exact same object reference
+ * unless the color scheme changes, avoiding invalidating child React.memo caches and
+ * StyleSheet memoization dependencies on high-frequency render updates.
  */
 export function useColors() {
   const scheme = useColorScheme();
   const palette: typeof colors.light =
     scheme === 'dark' && 'dark' in colors ? colors.dark : colors.light;
-  return { ...palette, radius: colors.radius };
+
+  // ⚡ Bolt Optimization: Memoize the constructed palette object.
+  // Custom hooks (like useColors) returning a newly constructed object ({ ...palette, radius })
+  // on every single call cause downstream hooks (like useMemo dependency arrays for StyleSheets)
+  // or components wrapped in React.memo/React.useMemo to fail their shallow/referential equality checks,
+  // triggering expensive re-render cascades. Wrapping the returned object in useMemo based on
+  // the stable underlying palette reference fully solves this performance bottleneck.
+  return useMemo(() => ({ ...palette, radius: colors.radius }), [palette]);
 }
