@@ -13,6 +13,12 @@ import colors from '@/constants/colors';
  * When a sibling web artifact's dark tokens are synced into a `dark`
  * key, this hook will automatically switch palettes based on the
  * device's appearance setting.
+ *
+ * ⚡ Bolt Optimization: Wrap returned palette object in React.useMemo.
+ * Since palette objects are static references from colors.ts, we use the reference
+ * of palette as a dependency. This ensures we return the exact same object reference
+ * unless the color scheme changes, avoiding invalidating child React.memo caches and
+ * StyleSheet memoization dependencies on high-frequency render updates.
  */
 export function useColors() {
   const scheme = useColorScheme();
