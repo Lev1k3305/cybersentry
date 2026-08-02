@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import colors from '@/constants/colors';
 
@@ -17,5 +18,12 @@ export function useColors() {
   const scheme = useColorScheme();
   const palette: typeof colors.light =
     scheme === 'dark' && 'dark' in colors ? colors.dark : colors.light;
-  return { ...palette, radius: colors.radius };
+
+  // ⚡ Bolt Optimization: Memoize the constructed palette object.
+  // Custom hooks (like useColors) returning a newly constructed object ({ ...palette, radius })
+  // on every single call cause downstream hooks (like useMemo dependency arrays for StyleSheets)
+  // or components wrapped in React.memo/React.useMemo to fail their shallow/referential equality checks,
+  // triggering expensive re-render cascades. Wrapping the returned object in useMemo based on
+  // the stable underlying palette reference fully solves this performance bottleneck.
+  return useMemo(() => ({ ...palette, radius: colors.radius }), [palette]);
 }

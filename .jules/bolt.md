@@ -35,3 +35,7 @@
 ## 2026-07-14 - [FastAPI In-Memory TTL Query Cache for Outbound OSINT Endpoints]
 **Learning:** Outbound network API requests to external OSINT providers (e.g., NumLookup, HIBP) can introduce significant latency and rate limit hazards. Repeat identical lookups are highly redundant and can be served instantly using an async-safe local in-memory cache layer.
 **Action:** Introduce a simple dictionary-based `TTLCache` class with a 5-minute TTL on the Python API microservice to resolve duplicate queries in 0ms, shielding external APIs and speeding up client polling requests.
+
+## 2026-07-15 - [React Hook return object memoization]
+**Learning:** Custom hooks in React or React Native (like `useColors`) that return newly constructed objects on every invocation invalidate the referential stability of their output. This forces any downstream hooks (such as `useMemo` dependency arrays for StyleSheet configurations) or child components (wrapped in `React.memo`) that depend on the hook's returned value to trigger expensive re-render cascades and style re-registrations.
+**Action:** Wrap any newly constructed objects returned by custom hooks in `useMemo` using the underlying stable references as dependencies (such as static configuration palettes) to maintain strict referential integrity.
