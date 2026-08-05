@@ -59,7 +59,7 @@ const TerminalRow = React.memo(function TerminalRow({ log }: { log: LogEntry }) 
   return prevProps.log.id === nextProps.log.id && prevProps.log.timestamp === nextProps.log.timestamp;
 });
 
-export function Terminal() {
+export const Terminal = React.memo(function Terminal() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<string[]>([]);
@@ -207,4 +207,4 @@ export function Terminal() {
       </div>
     </div>
   );
-}
+});
