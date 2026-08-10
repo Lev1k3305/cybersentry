@@ -31,3 +31,7 @@
 ## 2026-07-13 - [Frontend Result Card & List Render Memoization]
 **Learning:** When a parent component manages a text input (e.g., phone or email search query) updating on every keystroke, any rendered sibling or child components containing complex layouts, SVG icons, lists, or badges will completely re-render on every character typed, creating significant rendering and layout lag.
 **Action:** Wrap immutable result components (such as `PhoneResultCard` and `EmailResultCard`) in `React.memo` to cleanly block redundant re-render cycles while the user is actively typing or editing inside the form inputs.
+
+## 2026-07-14 - [React Terminal Shell Memoization on Parent Polling]
+**Learning:** In dashboards featuring a high-frequency status-polling parent container (e.g. 5-second `useGetSystemStatus` calls), all children are recursively re-rendered. For heavy interactive components with internal states like command logs (`<Terminal />`), this triggers redundant layout thrashing and DOM reconciliation on every poll tick, even when the terminal is completely static.
+**Action:** Wrap the parent-agnostic component (`Terminal`) in `React.memo` to completely isolate the terminal's rendering tree from periodic parent updates and status intervals, guaranteeing consistent typing speed.
