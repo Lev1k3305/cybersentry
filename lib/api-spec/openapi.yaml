@@ -132,6 +132,7 @@ components:
       properties:
         command:
           type: string
+          maxLength: 100
           description: Raw command string typed by the operator
     CommandResult:
       type: object

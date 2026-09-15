@@ -7,6 +7,9 @@
  */
 
 export interface CommandInput {
-  /** Raw command string typed by the operator */
+  /**
+     * Raw command string typed by the operator
+     * @maxLength 100
+     */
   command: string;
 }

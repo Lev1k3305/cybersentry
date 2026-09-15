@@ -21,8 +21,12 @@ export const HealthCheckResponse = zod.object({
  * Dispatches a command string and returns the formatted response
  * @summary Execute a terminal command
  */
+export const executeCommandBodyCommandMax = 100;
+
+
+
 export const ExecuteCommandBody = zod.object({
-  "command": zod.string().describe('Raw command string typed by the operator')
+  "command": zod.string().max(executeCommandBodyCommandMax).describe('Raw command string typed by the operator')
 })
 
 export const ExecuteCommandResponse = zod.object({

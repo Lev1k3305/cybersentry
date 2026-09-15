@@ -216,7 +216,8 @@ router.post("/command", async (req, res): Promise<void> => {
   }
 
   const raw = parsed.data.command.trim().toLowerCase();
-  const handler = COMMANDS[raw];
+  // 🛡️ Sentinel Security Fix: Use Object.hasOwn to prevent prototype property lookup pollution (e.g., toString, constructor)
+  const handler = Object.hasOwn(COMMANDS, raw) ? COMMANDS[raw] : undefined;
   const timestamp = new Date().toISOString();
 
   if (!handler) {
