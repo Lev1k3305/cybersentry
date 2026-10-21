@@ -108,6 +108,61 @@ export const ScanEmailResponse = zod.object({
 
 
 /**
+ * @summary Check domain intelligence and OSINT indicators
+ */
+export const checkDomainBodyDomainMin = 3;
+export const checkDomainBodyDomainMax = 253;
+
+
+
+export const CheckDomainBody = zod.object({
+  "domain": zod.string().min(checkDomainBodyDomainMin).max(checkDomainBodyDomainMax).describe('Domain hostname without scheme, port or path')
+})
+
+export const CheckDomainResponse = zod.object({
+  "domain": zod.string(),
+  "riskScore": zod.number().describe('0-100 risk score'),
+  "riskLabel": zod.enum(['safe', 'warning', 'danger']),
+  "summary": zod.string(),
+  "dns": zod.object({
+  "status": zod.enum(['ok', 'empty', 'error', 'timeout', 'blocked']),
+  "source": zod.string().nullish(),
+  "data": zod.unknown().nullish().describe('Check result payload'),
+  "error": zod.string().nullish(),
+  "timestamp": zod.string()
+}),
+  "tls": zod.object({
+  "status": zod.enum(['ok', 'empty', 'error', 'timeout', 'blocked']),
+  "source": zod.string().nullish(),
+  "data": zod.unknown().nullish().describe('Check result payload'),
+  "error": zod.string().nullish(),
+  "timestamp": zod.string()
+}),
+  "rdap": zod.object({
+  "status": zod.enum(['ok', 'empty', 'error', 'timeout', 'blocked']),
+  "source": zod.string().nullish(),
+  "data": zod.unknown().nullish().describe('Check result payload'),
+  "error": zod.string().nullish(),
+  "timestamp": zod.string()
+}),
+  "spf": zod.object({
+  "status": zod.enum(['ok', 'empty', 'error', 'timeout', 'blocked']),
+  "source": zod.string().nullish(),
+  "data": zod.unknown().nullish().describe('Check result payload'),
+  "error": zod.string().nullish(),
+  "timestamp": zod.string()
+}),
+  "dmarc": zod.object({
+  "status": zod.enum(['ok', 'empty', 'error', 'timeout', 'blocked']),
+  "source": zod.string().nullish(),
+  "data": zod.unknown().nullish().describe('Check result payload'),
+  "error": zod.string().nullish(),
+  "timestamp": zod.string()
+})
+})
+
+
+/**
  * @summary Get live security event log
  */
 export const GetSecurityLogResponseItem = zod.object({

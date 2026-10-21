@@ -69,10 +69,7 @@ function getDeploymentDomain() {
     return stripProtocol(process.env.EXPO_PUBLIC_DOMAIN);
   }
 
-  console.error(
-    'ERROR: No deployment domain found. Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN',
-  );
-  process.exit(1);
+  return 'localhost:8081';
 }
 
 function prepareDirectories(timestamp) {
@@ -126,7 +123,7 @@ async function checkMetroHealth() {
 }
 
 function getExpoPublicReplId() {
-  return process.env.REPL_ID || process.env.EXPO_PUBLIC_REPL_ID;
+  return process.env.REPL_ID || process.env.EXPO_PUBLIC_REPL_ID || '';
 }
 
 async function startMetro(expoPublicDomain, expoPublicReplId) {
