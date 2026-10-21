@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Terminal, Lock } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,47 +31,46 @@ export function DisclaimerGate() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent 
-        className="sm:max-w-[500px] border-destructive/20 bg-background/95 backdrop-blur-md"
+        className="sm:max-w-[520px] border-border bg-card text-card-foreground shadow-2xl"
         hideCloseButton
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader className="space-y-4">
-          <div className="mx-auto bg-destructive/10 p-4 rounded-full w-fit">
-            <ShieldAlert className="w-10 h-10 text-destructive" />
+          <div className="mx-auto bg-primary/10 border border-primary/30 p-3 rounded-lg w-fit text-primary">
+            <ShieldAlert className="w-8 h-8" />
           </div>
-          <DialogTitle className="text-xl text-center text-foreground uppercase tracking-widest font-mono">
-            CyberSentry:<br/> Условия использования<br/>и Конфиденциальность
+          <DialogTitle className="text-lg text-center text-foreground font-mono uppercase tracking-widest">
+            CyberSentry Platform<br/>
+            <span className="text-primary text-sm font-normal">Условия доступа и авторизация</span>
           </DialogTitle>
-          <DialogDescription className="text-center text-muted-foreground pt-4 text-base leading-relaxed">
-            Данное приложение предназначено исключительно для проверки личной безопасности, 
-            репутации номеров и анализа данных из открытых источников (OSINT). 
-            Разработчик не несет ответственности за любые возможные нелегальные, 
-            неправомерные или вредоносные действия пользователей, 
-            совершенные с использованием данного ПО.
+          <DialogDescription className="text-center text-muted-foreground pt-2 text-xs leading-relaxed font-sans">
+            Платформа предназначена исключительно для проведения проверок личной безопасности,
+            анализа открытых источников (OSINT) и мониторинга угрожающих сигналов.
+            Пользователь несет ответственность за правомерность использования полученных данных.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-start space-x-3 mt-6 p-4 border border-border/50 rounded-md bg-secondary/30">
+        <div className="flex items-start space-x-3 mt-4 p-3 border border-border rounded bg-secondary/30">
           <Checkbox 
             id="terms" 
             checked={agreed} 
             onCheckedChange={(c) => setAgreed(c as boolean)} 
-            className="mt-1"
+            className="mt-0.5 border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
           />
-          <Label htmlFor="terms" className="text-sm font-medium leading-snug cursor-pointer">
-            Я подтверждаю, что буду использовать приложение исключительно в легальных целях
+          <Label htmlFor="terms" className="text-xs font-mono leading-relaxed cursor-pointer text-muted-foreground select-none">
+            Подтверждаю использование платформы исключительно в законных целях и для проверки собственной безопасности.
           </Label>
         </div>
 
-        <DialogFooter className="mt-6 sm:justify-center">
+        <DialogFooter className="mt-4 sm:justify-center">
           <Button 
             disabled={!agreed} 
             onClick={handleAccept}
-            className="w-full font-mono uppercase tracking-wide"
+            className="w-full font-mono uppercase tracking-wider text-xs py-5 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             size="lg"
           >
-            Войти в панель CyberSentry
+            <Lock className="w-4 h-4 mr-2" /> Авторизовать доступ
           </Button>
         </DialogFooter>
       </DialogContent>

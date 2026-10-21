@@ -64,77 +64,86 @@
   --elevate-1: rgba(255, 255, 255, 0.04);
   --elevate-2: rgba(255, 255, 255, 0.09);
 
-  /* Background: #111827 */
-  --background: 222 47% 11%;
-  --foreground: 210 40% 98%;
+  /* CyberSentry Intelligence Platform Palette */
+  /* Main Background: #080D16 */
+  --background: 219 47% 6%;
+  /* Main Text: #E2E8F0 */
+  --foreground: 213 27% 84%;
 
-  --border: 215 28% 17%;
-  --input: 215 28% 17%;
-  --ring: 230 100% 67%; /* cool blue tint for focus */
+  /* Borders / Input: #223149 */
+  --border: 218 36% 21%;
+  --input: 218 36% 21%;
+  /* Primary Accent Ring: #38BDF8 */
+  --ring: 199 89% 60%;
 
-  --card: 222 47% 11%;
-  --card-foreground: 210 40% 98%;
-  --card-border: 215 28% 17%;
+  /* Cards: #111C2D */
+  --card: 218 45% 12%;
+  --card-foreground: 213 27% 84%;
+  --card-border: 218 36% 21%;
 
-  --sidebar: 222 47% 11%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 215 28% 17%;
-  --sidebar-primary: 230 100% 67%;
-  --sidebar-primary-foreground: 210 40% 98%;
-  --sidebar-accent: 215 28% 17%;
-  --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 230 100% 67%;
+  /* Sidebar / Panels: #0D1522 */
+  --sidebar: 218 45% 9%;
+  --sidebar-foreground: 213 27% 84%;
+  --sidebar-border: 218 36% 21%;
+  --sidebar-primary: 199 89% 60%;
+  --sidebar-primary-foreground: 219 47% 6%;
+  --sidebar-accent: 218 36% 16%;
+  --sidebar-accent-foreground: 213 27% 84%;
+  --sidebar-ring: 199 89% 60%;
 
-  --popover: 222 47% 11%;
-  --popover-foreground: 210 40% 98%;
-  --popover-border: 215 28% 17%;
+  /* Popover: #0D1522 */
+  --popover: 218 45% 9%;
+  --popover-foreground: 213 27% 84%;
+  --popover-border: 218 36% 21%;
 
-  --primary: 230 100% 67%; /* Cool blue accent */
-  --primary-foreground: 210 40% 98%;
+  /* Primary Accent: #38BDF8 */
+  --primary: 199 89% 60%;
+  --primary-foreground: 219 47% 6%;
 
-  --secondary: 215 28% 17%;
-  --secondary-foreground: 210 40% 98%;
+  /* Secondary Accent: #22D3EE */
+  --secondary: 218 36% 16%;
+  --secondary-foreground: 213 27% 84%;
 
-  --muted: 215 28% 17%;
-  --muted-foreground: 215 20% 65%;
+  /* Muted / Secondary Text: #94A3B8 */
+  --muted: 218 36% 16%;
+  --muted-foreground: 215 16% 65%;
 
-  --accent: 230 100% 67%;
-  --accent-foreground: 210 40% 98%;
+  /* Accent Cyan */
+  --accent: 187 85% 53%;
+  --accent-foreground: 219 47% 6%;
 
-  /* Danger / Alert: #EF4444 */
-  --destructive: 348 83% 60%;
-  --destructive-foreground: 210 40% 98%;
+  /* Critical Risk / Destructive: #F43F5E */
+  --destructive: 348 89% 60%;
+  --destructive-foreground: 213 27% 98%;
 
   /* Safe / Success: #10B981 */
   --safe: 160 84% 39%;
-  --safe-foreground: 210 40% 98%;
+  --safe-foreground: 213 27% 98%;
 
   /* Warning: #F59E0B */
   --warning: 38 92% 50%;
-  --warning-foreground: 210 40% 98%;
+  --warning-foreground: 219 47% 6%;
 
-  --chart-1: 230 100% 67%;
+  --chart-1: 199 89% 60%;
   --chart-2: 160 84% 39%;
   --chart-3: 38 92% 50%;
-  --chart-4: 348 83% 60%;
-  --chart-5: 280 65% 60%;
+  --chart-4: 348 89% 60%;
+  --chart-5: 187 85% 53%;
 
-  --app-font-sans: 'Space Grotesk', sans-serif;
+  --app-font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --app-font-serif: Georgia, serif;
-  --app-font-mono: 'Space Mono', monospace;
+  --app-font-mono: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   
-  --radius: 0.25rem;
+  --radius: 0.375rem;
 
-  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.5);
-  --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.5);
-  --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.5), 0px 1px 2px -1px hsl(0 0% 0% / 0.5);
-  --shadow: 0px 2px 0px 0px hsl(0 0% 0% / 0.5), 0px 1px 2px -1px hsl(0 0% 0% / 0.5);
-  --shadow-md: 0px 2px 0px 0px hsl(0 0% 0% / 0.5), 0px 2px 4px -1px hsl(0 0% 0% / 0.5);
-  --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.5), 0px 4px 6px -1px hsl(0 0% 0% / 0.5);
-  --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.5), 0px 8px 10px -1px hsl(0 0% 0% / 0.5);
-  --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.5);
-  --tracking-normal: 0em;
-  --spacing: 0.25rem;
+  --shadow-2xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.4);
+  --shadow-xs: 0px 2px 4px 0px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0px 2px 4px 0px rgba(0, 0, 0, 0.5);
+  --shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0px 6px 12px -2px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0px 10px 15px -3px rgba(0, 0, 0, 0.7);
+  --shadow-xl: 0px 20px 25px -5px rgba(0, 0, 0, 0.8);
+  --shadow-2xl: 0px 25px 50px -12px rgba(0, 0, 0, 0.9);
 
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -146,7 +155,7 @@
 }
 
 .dark {
-  /* identical to root since the app is dark only */
+  /* Dark mode is standard across CyberSentry Intelligence Platform */
 }
 
 @layer base {
@@ -155,7 +164,7 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased bg-background text-foreground selection:bg-primary/30 selection:text-primary;
   }
 }
 
@@ -168,40 +177,20 @@
     color: hsl(var(--muted-foreground));
     pointer-events: none;
   }
-  .no-default-hover-elevate {}
-  .no-default-active-elevate {}
-  .toggle-elevate::before, .toggle-elevate-2::before {
-    content: ''; pointer-events: none; position: absolute; inset: 0px; border-radius: inherit; z-index: -1;
+
+  .cyber-glow-primary {
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
   }
-  .toggle-elevate.toggle-elevated::before {
-    background-color: var(--elevate-2);
+
+  .cyber-glow-accent {
+    box-shadow: 0 0 15px rgba(34, 211, 238, 0.15);
   }
-  .border.toggle-elevate::before { inset: -1px; }
-  .hover-elevate:not(.no-default-hover-elevate),
-  .active-elevate:not(.no-default-active-elevate),
-  .hover-elevate-2:not(.no-default-hover-elevate),
-  .active-elevate-2:not(.no-default-active-elevate) {
-    position: relative; z-index: 0;
+
+  .cyber-glow-safe {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
   }
-  .hover-elevate:not(.no-default-hover-elevate)::after,
-  .active-elevate:not(.no-default-active-elevate)::after,
-  .hover-elevate-2:not(.no-default-hover-elevate)::after,
-  .active-elevate-2:not(.no-default-active-elevate)::after {
-    content: ''; pointer-events: none; position: absolute; inset: 0px; border-radius: inherit; z-index: 999;
-  }
-  .hover-elevate:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate:active:not(.no-default-active-elevate)::after {
-    background-color: var(--elevate-1);
-  }
-  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate-2:active:not(.no-default-active-elevate)::after {
-    background-color: var(--elevate-2);
-  }
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
-    inset: -1px;
+
+  .cyber-glow-destructive {
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.15);
   }
 }
