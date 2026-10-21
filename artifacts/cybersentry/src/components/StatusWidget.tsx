@@ -7,7 +7,7 @@ export function StatusWidget() {
   const { data: health, isLoading, isError } = useHealthCheck({
     query: {
       queryKey: getHealthCheckQueryKey(),
-      refetchInterval: 15000,
+      refetchInterval: (query) => (query.state.status === 'error' ? false : 15000),
     }
   });
 
@@ -38,7 +38,7 @@ export function StatusWidget() {
                 ? 'bg-destructive/10 border-destructive/30 text-destructive'
                 : 'bg-warning/10 border-warning/30 text-warning'
             }`}>
-              {isLoading ? 'Проверка...' : isOnline ? 'Все службы активны' : 'Ограниченная связь'}
+              {isLoading ? 'Проверка...' : isOnline ? 'Все службы активны' : 'API недоступен'}
             </span>
           </div>
 

@@ -103,10 +103,9 @@ export function DomainCheck() {
           className="font-mono text-xs bg-destructive/10 border-destructive/30 text-destructive-foreground"
         >
           <AlertTriangle className="h-4 w-4 text-destructive" />
-          <AlertTitle className="font-bold">Ошибка анализа домена</AlertTitle>
+          <AlertTitle className="font-bold">API недоступен</AlertTitle>
           <AlertDescription>
-            {(checkDomain.error as any)?.response?.data?.detail ||
-              (checkDomain.error as any)?.response?.data?.error ||
+            {(checkDomain.error as any)?.message ||
               "Не удалось выполнить анализ домена. Проверьте правильность введённого имени или повторите запрос позже."}
           </AlertDescription>
         </Alert>

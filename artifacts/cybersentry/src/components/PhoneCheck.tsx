@@ -99,9 +99,9 @@ export function PhoneCheck() {
           className="font-mono text-xs bg-destructive/10 border-destructive/30 text-destructive-foreground"
         >
           <AlertTriangle className="h-4 w-4 text-destructive" />
-          <AlertTitle className="font-bold">Ошибка анализа</AlertTitle>
+          <AlertTitle className="font-bold">API недоступен</AlertTitle>
           <AlertDescription>
-            Не удалось выполнить запрос проверки номера. Пожалуйста, попробуйте позже.
+            {(checkPhone.error as any)?.message || "Не удалось выполнить запрос проверки номера. Пожалуйста, попробуйте позже."}
           </AlertDescription>
         </Alert>
       )}

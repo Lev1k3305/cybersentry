@@ -7,7 +7,7 @@ export default function ConsolePage() {
   const { data: status } = useGetSystemStatus({
     query: {
       queryKey: getGetSystemStatusQueryKey(),
-      refetchInterval: 5000,
+      refetchInterval: (query) => (query.state.status === 'error' ? false : 15000),
     }
   });
 

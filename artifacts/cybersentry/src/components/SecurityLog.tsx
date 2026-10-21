@@ -4,7 +4,10 @@ import { useGetSecurityLog, getGetSecurityLogQueryKey } from '@workspace/api-cli
 
 export function SecurityLog() {
   const { data: logs, isLoading, error } = useGetSecurityLog({
-    query: { queryKey: getGetSecurityLogQueryKey(), refetchInterval: 10000 }
+    query: {
+      queryKey: getGetSecurityLogQueryKey(),
+      refetchInterval: (query) => (query.state.status === 'error' ? false : 15000),
+    }
   });
   
   const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -26,7 +29,7 @@ export function SecurityLog() {
   if (error) {
     return (
       <div className="h-[420px] border border-destructive/30 bg-[#070C14] rounded p-4 flex items-center justify-center">
-        <span className="text-destructive font-mono text-xs">ERR_CONNECTING_TO_LOG_STREAM</span>
+        <span className="text-destructive font-mono text-xs">API недоступен</span>
       </div>
     );
   }
@@ -40,7 +43,7 @@ export function SecurityLog() {
         </h3>
         <span className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
           <span className="w-2 h-2 rounded-full bg-safe animate-pulse" />
-          Прямой эфир (10s)
+          Прямой эфир (15s)
         </span>
       </div>
 
