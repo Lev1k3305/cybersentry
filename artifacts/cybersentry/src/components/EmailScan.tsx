@@ -7,7 +7,8 @@ import {
   Calendar,
   AlertCircle,
   X,
-  AlertCircle as AlertIcon,
+  CheckCircle2,
+  Lock
 } from "lucide-react";
 import { useScanEmail } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
@@ -31,34 +32,33 @@ export function EmailScan() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h3 className="text-xl font-bold font-mono text-foreground flex items-center gap-2">
-          <Fingerprint className="w-5 h-5 text-primary" />
-          СКАНЕР УТЕЧЕК АККАУНТОВ
+      <div className="space-y-1">
+        <h3 className="text-base font-bold font-mono text-foreground flex items-center gap-2">
+          <Fingerprint className="w-4 h-4 text-primary" />
+          EMAIL BREACH SCANNER
         </h3>
-        <p className="text-muted-foreground text-sm">
-          Проверьте email по базам скомпрометированных данных (пароли, личные
-          данные).
+        <p className="text-xs text-muted-foreground font-sans">
+          Сканирование адресов электронной почты по базам утечек паролей и личных данных.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <div className="flex flex-col gap-2">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-1.5">
           <Label
             htmlFor="email-input"
-            className="text-sm font-medium font-mono text-foreground"
+            className="text-xs font-semibold font-mono text-muted-foreground uppercase tracking-wider"
           >
             Адрес электронной почты <span className="text-destructive">*</span>
           </Label>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2.5">
             <div className="relative flex-1">
               <Input
                 id="email-input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@domain.com"
-                className="font-mono text-lg py-6 bg-secondary/30 pr-10"
+                placeholder="operator@cyber-intelligence.io"
+                className="font-mono text-sm h-11 bg-secondary/30 border-border pr-10 focus-visible:ring-primary"
                 disabled={scanEmail.isPending}
                 aria-describedby="email-hint"
                 required
@@ -71,7 +71,7 @@ export function EmailScan() {
                     scanEmail.reset();
                     document.getElementById("email-input")?.focus();
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring p-1 rounded-sm"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none p-1 rounded-sm"
                   aria-label="Очистить"
                 >
                   <X className="w-4 h-4" />
@@ -81,41 +81,38 @@ export function EmailScan() {
             <Button
               type="submit"
               size="lg"
-              className="py-6 px-8 font-mono tracking-wide"
+              className="h-11 px-6 font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={scanEmail.isPending || !email.trim()}
             >
-              {scanEmail.isPending ? "СКАНИРОВАНИЕ..." : "Сканировать"}
+              {scanEmail.isPending ? "Сканирование..." : "Запустить сканер"}
             </Button>
           </div>
         </div>
-        <p id="email-hint" className="text-xs text-muted-foreground font-mono">
-          🔒 Ваши данные шифруются и не сохраняются на сервере.
+        <p id="email-hint" className="text-[11px] text-muted-foreground font-mono flex items-center gap-1.5">
+          <Lock className="w-3.5 h-3.5 text-primary shrink-0" />
+          <span>Данные не сохраняются в локальных и удаленных журналах.</span>
         </p>
       </form>
 
       {scanEmail.isError && (
         <Alert
           variant="destructive"
-          className="font-mono bg-destructive/5 border-destructive/20"
+          className="font-mono text-xs bg-destructive/10 border-destructive/30 text-destructive-foreground"
         >
-          <AlertIcon className="h-4 w-4" />
+          <AlertCircle className="h-4 w-4 text-destructive" />
           <AlertTitle className="font-bold">Ошибка сканирования</AlertTitle>
           <AlertDescription>
-            Не удалось выполнить запрос сканирования утечек. Пожалуйста,
-            попробуйте позже.
+            Не удалось выполнить запрос сканирования утечек. Пожалуйста, попробуйте позже.
           </AlertDescription>
         </Alert>
       )}
 
       {scanEmail.isPending && (
-        <Card className="border-border/50 bg-secondary/10">
-          <CardContent className="p-6 space-y-4">
-            <Skeleton className="h-8 w-1/3 bg-muted/20" />
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full bg-muted/20" />
-              <Skeleton className="h-4 w-full bg-muted/20" />
-            </div>
-            <Skeleton className="h-32 w-full bg-muted/20" />
+        <Card className="border-border bg-card">
+          <CardContent className="p-5 space-y-3">
+            <Skeleton className="h-6 w-1/3 bg-muted/20" />
+            <Skeleton className="h-4 w-full bg-muted/20" />
+            <Skeleton className="h-20 w-full bg-muted/20" />
           </CardContent>
         </Card>
       )}
@@ -127,10 +124,6 @@ export function EmailScan() {
   );
 }
 
-// ⚡ Bolt Optimization: Memoize EmailResultCard rendering.
-// Since the email breach scan results are immutable once fetched, wrapping EmailResultCard in React.memo
-// completely avoids costly re-renders of the breach list items, severities, dataTypes, progress bars,
-// and other complex presentation components when the user continues typing/editing in the search input field.
 const EmailResultCard = React.memo(function EmailResultCard({
   result,
 }: {
@@ -139,29 +132,29 @@ const EmailResultCard = React.memo(function EmailResultCard({
   const isCompromised = result.compromised;
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-4">
       <Card
-        className={`border ${isCompromised ? "border-destructive/40 bg-destructive/5" : "border-safe/40 bg-safe/5"}`}
+        className={`border ${isCompromised ? "border-destructive/30 bg-destructive/5" : "border-safe/30 bg-safe/5"} overflow-hidden font-mono text-xs`}
       >
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2.5">
                 {isCompromised ? (
-                  <ShieldAlert className="w-8 h-8 text-destructive" />
+                  <ShieldAlert className="w-6 h-6 text-destructive" />
                 ) : (
-                  <Database className="w-8 h-8 text-safe" />
+                  <CheckCircle2 className="w-6 h-6 text-safe" />
                 )}
-                <h4 className="font-mono text-xl font-bold text-foreground">
-                  Статус: {isCompromised ? "Скомпрометирован" : "Чисто"}
+                <h4 className="text-base font-bold text-foreground">
+                  Статус: {isCompromised ? "Обнаружена компрометация" : "Утечек не найдено"}
                 </h4>
               </div>
-              <p className="text-muted-foreground font-mono">{result.email}</p>
+              <p className="text-xs text-muted-foreground font-mono">{result.email}</p>
             </div>
 
-            <div className="w-full md:w-64 space-y-2">
-              <div className="flex justify-between text-sm font-mono">
-                <span className="text-muted-foreground">Оценка риска</span>
+            <div className="w-full md:w-56 space-y-1.5">
+              <div className="flex justify-between text-[11px]">
+                <span className="text-muted-foreground">Индекс риска</span>
                 <span
                   className={
                     result.riskScore > 50
@@ -174,7 +167,7 @@ const EmailResultCard = React.memo(function EmailResultCard({
               </div>
               <Progress
                 value={result.riskScore}
-                className="h-2"
+                className="h-2 bg-secondary"
                 indicatorClassName={
                   result.riskScore > 50 ? "bg-destructive" : "bg-safe"
                 }
@@ -183,55 +176,55 @@ const EmailResultCard = React.memo(function EmailResultCard({
           </div>
 
           {result.recommendation && (
-            <div className="mt-6 p-4 bg-background/50 border border-border/50 rounded-md flex gap-3">
-              <AlertCircle className="w-5 h-5 text-primary shrink-0" />
-              <p className="text-sm">{result.recommendation}</p>
+            <div className="p-3 bg-background/50 border border-border rounded flex items-start gap-2.5 font-sans text-xs leading-relaxed text-foreground">
+              <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <span>{result.recommendation}</span>
             </div>
           )}
         </CardContent>
       </Card>
 
       {result.breaches && result.breaches.length > 0 && (
-        <div className="space-y-4">
-          <h4 className="font-mono font-bold text-lg text-foreground uppercase tracking-widest">
+        <div className="space-y-3 font-mono">
+          <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
             Обнаруженные утечки ({result.breaches.length})
           </h4>
 
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 gap-2.5">
             {result.breaches.map((breach: any, idx: number) => (
               <Card
                 key={idx}
-                className="border-border/40 bg-secondary/20 hover:bg-secondary/40 transition-colors"
+                className="border-border bg-card hover:border-primary/30 transition-colors"
               >
-                <CardContent className="p-4 flex flex-col md:flex-row justify-between gap-4">
+                <CardContent className="p-4 flex flex-col sm:flex-row justify-between gap-3 text-xs">
                   <div>
-                    <h5 className="font-bold font-mono text-destructive mb-1">
+                    <h5 className="font-bold text-destructive text-sm mb-1">
                       {breach.name}
                     </h5>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      {breach.date}
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>{breach.date}</span>
                     </div>
                   </div>
 
-                  <div className="flex flex-col md:items-end gap-2">
+                  <div className="flex flex-col sm:items-end gap-2">
                     <Badge
                       variant="outline"
                       className={`
-                      ${breach.severity === "critical" ? "border-destructive text-destructive" : ""}
-                      ${breach.severity === "high" ? "border-warning text-warning" : ""}
-                      ${breach.severity === "medium" ? "border-primary text-primary" : ""}
-                      ${breach.severity === "low" ? "border-muted text-muted-foreground" : ""}
-                      uppercase tracking-wider font-mono text-[10px]
+                      ${breach.severity === "critical" ? "border-destructive/40 text-destructive bg-destructive/10" : ""}
+                      ${breach.severity === "high" ? "border-warning/40 text-warning bg-warning/10" : ""}
+                      ${breach.severity === "medium" ? "border-primary/40 text-primary bg-primary/10" : ""}
+                      ${breach.severity === "low" ? "border-border text-muted-foreground" : ""}
+                      uppercase tracking-wider font-mono text-[9px] px-2 py-0.5
                     `}
                     >
                       Угроза: {breach.severity}
                     </Badge>
-                    <div className="flex flex-wrap gap-1 md:justify-end">
+                    <div className="flex flex-wrap gap-1 sm:justify-end">
                       {breach.dataTypes.map((dt: string, i: number) => (
                         <span
                           key={i}
-                          className="text-[10px] bg-background px-2 py-0.5 rounded text-muted-foreground border border-border/50"
+                          className="text-[10px] bg-secondary/60 px-2 py-0.5 rounded text-muted-foreground border border-border"
                         >
                           {dt}
                         </span>
