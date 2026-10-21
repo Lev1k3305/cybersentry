@@ -11,7 +11,7 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
   const { data: healthData, isError } = useHealthCheck({
     query: {
       queryKey: getHealthCheckQueryKey(),
-      refetchInterval: 15000,
+      refetchInterval: (query) => (query.state.status === 'error' ? false : 15000),
     }
   });
 
@@ -68,9 +68,9 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
           <div className="flex items-center gap-2 bg-card px-2.5 py-1 rounded border border-border">
             <span className="text-[10px] text-muted-foreground uppercase tracking-widest hidden sm:inline">API:</span>
             {isError ? (
-              <span className="inline-flex items-center gap-1.5 text-destructive font-semibold">
+              <span className="inline-flex items-center gap-1.5 text-destructive font-semibold" title="API недоступен">
                 <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
-                OFFLINE
+                API НЕДОСТУПЕН
               </span>
             ) : isHealthy ? (
               <span className="inline-flex items-center gap-1.5 text-safe font-semibold">

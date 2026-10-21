@@ -100,9 +100,9 @@ export function EmailScan() {
           className="font-mono text-xs bg-destructive/10 border-destructive/30 text-destructive-foreground"
         >
           <AlertCircle className="h-4 w-4 text-destructive" />
-          <AlertTitle className="font-bold">Ошибка сканирования</AlertTitle>
+          <AlertTitle className="font-bold">API недоступен</AlertTitle>
           <AlertDescription>
-            Не удалось выполнить запрос сканирования утечек. Пожалуйста, попробуйте позже.
+            {(scanEmail.error as any)?.message || "Не удалось выполнить запрос сканирования утечек. Пожалуйста, попробуйте позже."}
           </AlertDescription>
         </Alert>
       )}
