@@ -8,7 +8,7 @@
  *   GET  /cybersentry/log    – live in-memory security event log
  */
 import { Router, type IRouter } from "express";
-import { CheckPhoneBody, ScanEmailBody } from "@workspace/api-zod";
+import { CheckPhoneBody, ScanEmailBody, CheckDomainBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
@@ -47,6 +47,26 @@ router.post("/cybersentry/phone", async (req, res): Promise<void> => {
     res.status(status).json(data);
   } catch {
     res.status(503).json({ error: "Сервис проверки номеров временно недоступен" });
+  }
+});
+
+// ─── POST /cybersentry/domain ────────────────────────────────────────────────
+
+router.post("/cybersentry/domain", async (req, res): Promise<void> => {
+  const parsed = CheckDomainBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Неверный формат запроса домена" });
+    return;
+  }
+  try {
+    const { status, data } = await forward(
+      `${PY_BASE}/cybersentry/domain`,
+      "POST",
+      parsed.data,
+    );
+    res.status(status).json(data);
+  } catch {
+    res.status(503).json({ error: "Сервис анализа доменов временно недоступен" });
   }
 });
 

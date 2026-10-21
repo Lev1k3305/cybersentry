@@ -22,6 +22,8 @@ import type {
 import type {
   CommandInput,
   CommandResult,
+  DomainInput,
+  DomainResult,
   EmailInput,
   EmailResult,
   HealthStatus,
@@ -423,6 +425,76 @@ export const useScanEmail = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getScanEmailMutationOptions(options));
+    }
+
+export const getCheckDomainUrl = () => {
+
+
+
+
+  return `/api/cybersentry/domain`
+}
+
+/**
+ * @summary Check domain intelligence and OSINT indicators
+ */
+export const checkDomain = async (domainInput: DomainInput, options?: RequestInit): Promise<DomainResult> => {
+
+  return customFetch<DomainResult>(getCheckDomainUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(domainInput)
+  }
+);}
+
+
+
+
+export const getCheckDomainMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkDomain>>, TError,{data: BodyType<DomainInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkDomain>>, TError,{data: BodyType<DomainInput>}, TContext> => {
+
+const mutationKey = ['checkDomain'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkDomain>>, {data: BodyType<DomainInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  checkDomain(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckDomainMutationResult = NonNullable<Awaited<ReturnType<typeof checkDomain>>>
+    export type CheckDomainMutationBody = BodyType<DomainInput>
+    export type CheckDomainMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Check domain intelligence and OSINT indicators
+ */
+export const useCheckDomain = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkDomain>>, TError,{data: BodyType<DomainInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkDomain>>,
+        TError,
+        {data: BodyType<DomainInput>},
+        TContext
+      > => {
+      return useMutation(getCheckDomainMutationOptions(options));
     }
 
 export const getGetSecurityLogUrl = () => {

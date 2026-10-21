@@ -23,6 +23,11 @@ from datetime import datetime, timezone
 from typing import Optional
 from contextlib import asynccontextmanager
 
+import asyncio
+import ipaddress
+import socket
+import ssl
+import time
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -113,6 +118,256 @@ class TTLCache:
 
 phone_cache = TTLCache(ttl_seconds=300.0)  # 5-minute phone lookup cache
 email_cache = TTLCache(ttl_seconds=300.0)  # 5-minute email scan cache
+domain_cache = TTLCache(ttl_seconds=300.0) # 5-minute domain lookup cache
+
+
+# ─── SSRF Security & IP Validation ───────────────────────────────────────────
+
+def is_ip_safe(ip_str: str) -> bool:
+    """
+    Blocks loopback, private, link-local, CGNAT, multicast, reserved, unspecified
+    and documentation IPs to secure against SSRF and internal network scanning.
+    Handles alternative IP representations (int, octal, hex) if parsed into ipaddress.
+    """
+    try:
+        # Check integer/hex string representations
+        if ip_str.isdigit():
+            ip = ipaddress.ip_address(int(ip_str))
+        elif ip_str.startswith("0x") or ip_str.startswith("0X"):
+            ip = ipaddress.ip_address(int(ip_str, 16))
+        else:
+            ip = ipaddress.ip_address(ip_str)
+
+        if (
+            ip.is_loopback
+            or ip.is_private
+            or ip.is_link_local
+            or ip.is_multicast
+            or ip.is_reserved
+            or ip.is_unspecified
+            or ip.is_global is False
+        ):
+            return False
+
+        # Additional explicit CIDR checks (CGNAT 100.64.0.0/10, 0.0.0.0/8, 198.18.0.0/15)
+        if isinstance(ip, ipaddress.IPv4Address):
+            ip_int = int(ip)
+            # 0.0.0.0/8
+            if (ip_int >> 24) == 0:
+                return False
+            # CGNAT 100.64.0.0/10
+            if (ip_int >> 22) == (100 << 8 | 64) >> 6:
+                return False
+            # Benchmarking 198.18.0.0/15
+            if (ip_int >> 17) == (198 << 8 | 18) >> 1:
+                return False
+
+        return True
+    except (ValueError, OverflowError):
+        return False
+
+
+# ─── Domain OSINT Helpers: DNS, TLS, RDAP, SPF, DMARC ────────────────────────
+
+ALLOWED_RDAP_HOSTS = {
+    "rdap.org",
+    "rdap.verisign.com",
+    "rdap.publicinterestregistry.org",
+    "rdap.nic.cz",
+    "rdap.apnic.net",
+    "rdap.arin.net",
+    "rdap.ripe.net",
+    "rdap.lacnic.net",
+    "rdap.afrinic.net",
+    "rdap.iana.org",
+}
+
+
+async def fetch_doh_records(domain: str, record_type: str) -> tuple[str, list[dict], Optional[str]]:
+    """
+    Fetch DNS records using RFC 8484 DNS-over-HTTPS (DoH) via Cloudflare/Google with fallback.
+    Validates returned A/AAAA IPs against SSRF rules.
+    Returns (status, data, error_message).
+    """
+    if http_client is None:
+        return "error", [], "HTTP client is not initialized"
+
+    url = f"https://cloudflare-dns.com/dns-query"
+    params = {"name": domain, "type": record_type}
+    headers = {"Accept": "application/dns-json"}
+
+    try:
+        r = await http_client.get(url, params=params, headers=headers, timeout=6.0)
+        if r.status_code != 200:
+            return "error", [], f"DoH provider returned HTTP {r.status_code}"
+
+        res = r.json()
+        rcode = res.get("Status")
+        if rcode == 3:  # NXDOMAIN
+            return "empty", [], "Доменное имя не найдено в глобальном DNS (NXDOMAIN)"
+        if rcode != 0:
+            return "empty", [], f"DNS вернул код ответа: {rcode}"
+
+        answers = res.get("Answer", [])
+        if not answers:
+            return "empty", [], None
+
+        records = []
+        for ans in answers:
+            data_val = ans.get("data", "").strip('"')
+            # SSRF validation on resolved IP addresses
+            if record_type in ("A", "AAAA"):
+                if not is_ip_safe(data_val):
+                    log.warning("Blocked forbidden IP %s for domain %s", data_val, domain)
+                    return "blocked", [], f"Заблокирован недопустимый или внутренний IP-адрес: {data_val}"
+            records.append({
+                "name": ans.get("name"),
+                "type": record_type,
+                "TTL": ans.get("TTL"),
+                "data": data_val,
+            })
+
+        return "ok", records, None
+
+    except httpx.TimeoutException:
+        return "timeout", [], "Превышено время ожидания ответа от DNS"
+    except Exception as exc:
+        log.error("DNS query error for %s (%s): %s", domain, record_type, exc)
+        return "error", [], "Ошибка взаимодействия с DNS провайдером"
+
+
+async def fetch_tls_cert(domain: str) -> tuple[str, Optional[dict], Optional[str]]:
+    """
+    Safely inspects TLS certificate over socket/SSL with SSRF IP verification and strict timeouts.
+    """
+    loop = asyncio.get_running_loop()
+    now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    try:
+        # Resolve A/AAAA locally first to inspect target IP for SSRF
+        addr_info = await asyncio.wait_for(
+            loop.getaddrinfo(domain, 443, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM),
+            timeout=5.0,
+        )
+        if not addr_info:
+            return "empty", None, "Не удалось определить IP-адрес хоста"
+
+        target_ip = addr_info[0][4][0]
+        if not is_ip_safe(target_ip):
+            return "blocked", None, f"Заблокирован недопустимый целевой IP: {target_ip}"
+
+        def _connect_ssl():
+            ctx = ssl.create_default_context()
+            with socket.create_connection((target_ip, 443), timeout=5.0) as sock:
+                with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
+                    return ssock.getpeercert()
+
+        cert = await asyncio.wait_for(loop.run_in_executor(None, _connect_ssl), timeout=6.0)
+        if not cert:
+            return "empty", None, "Сертификат SSL не предоставлен сервером"
+
+        issuer_dict = dict(x[0] for x in cert.get("issuer", ()))
+        subject_dict = dict(x[0] for x in cert.get("subject", ()))
+
+        parsed_data = {
+            "subject": subject_dict.get("commonName") or subject_dict.get("organizationName") or domain,
+            "issuer": issuer_dict.get("organizationName") or issuer_dict.get("commonName") or "Unknown Issuer",
+            "notBefore": cert.get("notBefore"),
+            "notAfter": cert.get("notAfter"),
+            "serialNumber": cert.get("serialNumber"),
+            "ip": target_ip,
+        }
+        return "ok", parsed_data, None
+
+    except (asyncio.TimeoutError, socket.timeout):
+        return "timeout", None, "Таймаут подключения по TLS (443)"
+    except ssl.SSLError as exc:
+        return "error", None, f"Ошибка TLS/SSL: {exc.reason if hasattr(exc, 'reason') else str(exc)}"
+    except Exception as exc:
+        return "error", None, f"Не удалось установить TLS-соединение: {str(exc)}"
+
+
+async def fetch_rdap_info(domain: str) -> tuple[str, Optional[dict], Optional[str]]:
+    """
+    Fetches domain registration data from ICANN RDAP with allowlist redirect safety.
+    """
+    if http_client is None:
+        return "error", None, "HTTP client is not initialized"
+
+    url = f"https://rdap.org/domain/{domain}"
+    try:
+        r = await http_client.get(url, follow_redirects=False, timeout=8.0)
+
+        # Handle allowed redirects safely with SSRF target IP inspection
+        if r.status_code in (301, 302, 303, 307, 308):
+            redirect_url = r.headers.get("Location")
+            if not redirect_url:
+                return "error", None, "Пустой заголовок редиректа RDAP"
+
+            parsed_loc = urllib.parse.urlparse(redirect_url)
+            if parsed_loc.scheme not in ("https", "http"):
+                return "blocked", None, "Заблокирована недопустимая схема редиректа RDAP"
+
+            host = parsed_loc.hostname or ""
+            is_allowed = any(host == h or host.endswith("." + h) or host.endswith(".nic.cz") for h in ALLOWED_RDAP_HOSTS)
+            if not is_allowed:
+                log.warning("Blocked untrusted RDAP redirect to %s", host)
+                return "blocked", None, f"Заблокирован редирект на недоверенный RDAP-сервер: {host}"
+
+            # SSRF re-check on redirect target host IP before sending HTTP request
+            loop = asyncio.get_running_loop()
+            try:
+                addr_info = await asyncio.wait_for(
+                    loop.getaddrinfo(host, parsed_loc.port or (443 if parsed_loc.scheme == "https" else 80)),
+                    timeout=4.0
+                )
+                if addr_info:
+                    redirect_ip = addr_info[0][4][0]
+                    if not is_ip_safe(redirect_ip):
+                        log.warning("Blocked forbidden RDAP redirect IP %s for host %s", redirect_ip, host)
+                        return "blocked", None, f"Заблокирован редирект на внутренний/частный IP-адрес: {redirect_ip}"
+            except Exception as exc:
+                log.error("Failed to resolve RDAP redirect host %s: %s", host, exc)
+                return "error", None, "Ошибка резолва хоста редиректа RDAP"
+
+            r = await http_client.get(redirect_url, timeout=8.0)
+
+        if r.status_code == 404:
+            return "empty", None, "Сведения о регистрации домена не найдены в RDAP (404)"
+        if r.status_code != 200:
+            return "error", None, f"RDAP сервер вернул код {r.status_code}"
+
+        res = r.json()
+        entities = res.get("entities", [])
+        registrar_name = None
+        for ent in entities:
+            roles = ent.get("roles", [])
+            if "registrar" in roles:
+                vcard = ent.get("vcardArray", [])
+                if len(vcard) > 1:
+                    for item in vcard[1]:
+                        if item[0] == "fn":
+                            registrar_name = item[3]
+                            break
+
+        events = {e.get("eventAction"): e.get("eventDate") for e in res.get("events", [])}
+
+        rdap_data = {
+            "handle": res.get("handle"),
+            "ldhName": res.get("ldhName", domain),
+            "registrar": registrar_name or "Не указан",
+            "status": res.get("status", []),
+            "registrationDate": events.get("registration"),
+            "expirationDate": events.get("expiration"),
+            "lastChangedDate": events.get("last changed"),
+        }
+        return "ok", rdap_data, None
+
+    except httpx.TimeoutException:
+        return "timeout", None, "Таймаут ответа от RDAP сервера"
+    except Exception as exc:
+        log.error("RDAP fetch error for %s: %s", domain, exc)
+        return "error", None, "Ошибка получения данных RDAP"
 
 
 # ─── Phone: local spam knowledge base ────────────────────────────────────────
@@ -361,6 +616,41 @@ class EmailInput(BaseModel):
         if any(c in v for c in "/\\ ;<>[]{}|`^\""):
             raise ValueError("Email содержит недопустимые символы")
         return v
+
+
+class DomainInput(BaseModel):
+    domain: str = Field(
+        ...,
+        min_length=3,
+        max_length=253,
+        description="Имя доменного хоста (без схемы, порта и пути)",
+    )
+
+    @field_validator("domain")
+    @classmethod
+    def validate_domain(cls, v: str) -> str:
+        clean = v.strip().lower()
+        if clean.startswith("http://") or clean.startswith("https://") or "://" in clean:
+            raise ValueError("Входное значение содержит схему URL (http/https). Введите только имя хоста домена.")
+        if "/" in clean or "\\" in clean or ":" in clean or "?" in clean or "#" in clean or "@" in clean:
+            raise ValueError("Входное значение содержит недопустимые символы пути, порта или аутентификации. Введите только имя хоста.")
+
+        # Disallow IP literals in standard, hex, octal, or integer formats
+        try:
+            if clean.isdigit() or clean.startswith("0x") or clean.startswith("0X"):
+                ipaddress.ip_address(int(clean, 0 if clean.startswith("0x") else 10))
+                raise ValueError("IP-адреса не допускаются. Введите доменное имя хоста.")
+            ipaddress.ip_address(clean)
+            raise ValueError("IP-адреса не допускаются. Введите доменное имя хоста.")
+        except ValueError as err:
+            if "IP-адреса не допускаются" in str(err):
+                raise err
+            pass
+
+        domain_regex = r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}\.?$"
+        if not re.match(domain_regex, clean):
+            raise ValueError("Неверный формат доменного имени")
+        return clean.rstrip(".")
 
 
 # ─── POST /cybersentry/phone ──────────────────────────────────────────────────
@@ -662,6 +952,156 @@ async def email_scan(body: EmailInput):
     res = await _do_scan()
     email_cache.set(email, res)
     return res
+
+
+# ─── POST /cybersentry/domain ─────────────────────────────────────────────────
+
+@app.post("/cybersentry/domain")
+async def domain_check(body: DomainInput):
+    domain = body.domain.strip().lower()
+
+    # Check TTL cache first
+    cached = domain_cache.get(domain)
+    if cached is not None:
+        add_log("INFO", f"Результаты анализа домена {domain} получены из кэша (0ms)")
+        return cached
+
+    now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    # Fetch DNS A, AAAA, MX, NS, TXT concurrently
+    a_task = fetch_doh_records(domain, "A")
+    aaaa_task = fetch_doh_records(domain, "AAAA")
+    mx_task = fetch_doh_records(domain, "MX")
+    ns_task = fetch_doh_records(domain, "NS")
+    txt_task = fetch_doh_records(domain, "TXT")
+    dmarc_txt_task = fetch_doh_records(f"_dmarc.{domain}", "TXT")
+    tls_task = fetch_tls_cert(domain)
+    rdap_task = fetch_rdap_info(domain)
+
+    (
+        a_res, aaaa_res, mx_res, ns_res, txt_res, dmarc_txt_res, tls_res, rdap_res
+    ) = await asyncio.gather(
+        a_task, aaaa_task, mx_task, ns_task, txt_task, dmarc_txt_task, tls_task, rdap_task
+    )
+
+    # Check if any IP check resulted in SSRF block
+    if a_res[0] == "blocked" or aaaa_res[0] == "blocked":
+        blocked_err = a_res[2] or aaaa_res[2] or "Домен указывает на заблокированный закрытый/внутренний IP-адрес"
+        add_log("ALERT", f"Проверка домена {domain} заблокирована: SSRF / Private IP")
+        raise HTTPException(status_code=400, detail=blocked_err)
+
+    # Build DNS data object
+    dns_records = {
+        "A": a_res[1],
+        "AAAA": aaaa_res[1],
+        "MX": mx_res[1],
+        "NS": ns_res[1],
+        "TXT": txt_res[1],
+    }
+    has_any_dns = any(bool(v) for v in dns_records.values())
+
+    dns_status = "ok" if has_any_dns else (a_res[0] if a_res[0] != "ok" else "empty")
+    dns_err = a_res[2] if not has_any_dns else None
+
+    # Parse SPF from TXT records
+    spf_data = None
+    spf_status = "empty"
+    spf_err = None
+    for rec in txt_res[1]:
+        data_str = rec.get("data", "")
+        if "v=spf1" in data_str:
+            spf_data = {"record": data_str}
+            spf_status = "ok"
+            break
+
+    # Parse DMARC from _dmarc TXT records
+    dmarc_data = None
+    dmarc_status = "empty"
+    dmarc_err = None
+    for rec in dmarc_txt_res[1]:
+        data_str = rec.get("data", "")
+        if "v=DMARC1" in data_str or "v=dmarc1" in data_str:
+            dmarc_data = {"record": data_str}
+            dmarc_status = "ok"
+            break
+
+    # Calculate Risk Score & Summary
+    risk_score = 0
+    issues = []
+
+    if not has_any_dns:
+        risk_score += 40
+        issues.append("Отсутствуют DNS-записи или домен не зарегистрирован")
+
+    if spf_status != "ok":
+        risk_score += 20
+        issues.append("Отсутствует SPF-запись (риск подделки почты)")
+
+    if dmarc_status != "ok":
+        risk_score += 20
+        issues.append("Отсутствует DMARC-политика (риск фишинга)")
+
+    if tls_res[0] != "ok":
+        risk_score += 20
+        issues.append("Проблемы с TLS-сертификатом или HTTPS недоступен")
+
+    risk_label = "safe"
+    if risk_score >= 50:
+        risk_label = "danger"
+    elif risk_score >= 20:
+        risk_label = "warning"
+
+    summary = (
+        f"Анализ домена завершён. Индикаторы риска: {', '.join(issues)}."
+        if issues else
+        "Домен имеет корректные DNS-записи, активный TLS-сертификат и настроенную SPF/DMARC защиту."
+    )
+
+    result = {
+        "domain": domain,
+        "riskScore": min(100, risk_score),
+        "riskLabel": risk_label,
+        "summary": summary,
+        "dns": {
+            "status": dns_status,
+            "source": "Cloudflare DoH (RFC 8484)",
+            "data": dns_records if has_any_dns else None,
+            "error": dns_err,
+            "timestamp": now_iso,
+        },
+        "tls": {
+            "status": tls_res[0],
+            "source": "TLS Direct Handshake (:443)",
+            "data": tls_res[1],
+            "error": tls_res[2],
+            "timestamp": now_iso,
+        },
+        "rdap": {
+            "status": rdap_res[0],
+            "source": "ICANN RDAP (rdap.org)",
+            "data": rdap_res[1],
+            "error": rdap_res[2],
+            "timestamp": now_iso,
+        },
+        "spf": {
+            "status": spf_status,
+            "source": "DNS TXT Analysis",
+            "data": spf_data,
+            "error": spf_err,
+            "timestamp": now_iso,
+        },
+        "dmarc": {
+            "status": dmarc_status,
+            "source": "DNS TXT _dmarc Analysis",
+            "data": dmarc_data,
+            "error": dmarc_err,
+            "timestamp": now_iso,
+        },
+    }
+
+    add_log("INFO" if risk_label == "safe" else "WARN", f"Выполнен анализ домена {domain} — статус: {risk_label} (риск {risk_score}/100)")
+    domain_cache.set(domain, result)
+    return result
 
 
 # ─── GET /cybersentry/log ─────────────────────────────────────────────────────

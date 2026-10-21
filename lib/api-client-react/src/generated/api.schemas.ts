@@ -128,6 +128,59 @@ export interface EmailResult {
   recommendation?: string | null;
 }
 
+export interface DomainInput {
+  /**
+     * Domain hostname without scheme, port or path
+     * @minLength 3
+     * @maxLength 253
+     */
+  domain: string;
+}
+
+export type DomainRecordCheckStatus = typeof DomainRecordCheckStatus[keyof typeof DomainRecordCheckStatus];
+
+
+export const DomainRecordCheckStatus = {
+  ok: 'ok',
+  empty: 'empty',
+  error: 'error',
+  timeout: 'timeout',
+  blocked: 'blocked',
+} as const;
+
+export interface DomainRecordCheck {
+  status: DomainRecordCheckStatus;
+  /** @nullable */
+  source?: string | null;
+  /** Check result payload */
+  data?: unknown | null;
+  /** @nullable */
+  error?: string | null;
+  timestamp: string;
+}
+
+export type DomainResultRiskLabel = typeof DomainResultRiskLabel[keyof typeof DomainResultRiskLabel];
+
+
+export const DomainResultRiskLabel = {
+  safe: 'safe',
+  warning: 'warning',
+  danger: 'danger',
+} as const;
+
+export interface DomainResult {
+  domain: string;
+  /** 0-100 risk score */
+  riskScore: number;
+  riskLabel: DomainResultRiskLabel;
+  summary: string;
+  dns: DomainRecordCheck;
+  tls: DomainRecordCheck;
+  rdap: DomainRecordCheck;
+  spf: DomainRecordCheck;
+  dmarc: DomainRecordCheck;
+}
+
 export type LogEntryLevel = typeof LogEntryLevel[keyof typeof LogEntryLevel];
 
 

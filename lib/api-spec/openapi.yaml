@@ -102,6 +102,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmailResult"
+  /cybersentry/domain:
+    post:
+      operationId: checkDomain
+      tags: [cybersentry]
+      summary: Check domain intelligence and OSINT indicators
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DomainInput"
+      responses:
+        "200":
+          description: Domain intelligence result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainResult"
   /cybersentry/log:
     get:
       operationId: getSecurityLog
@@ -259,6 +277,55 @@ components:
             $ref: "#/components/schemas/BreachItem"
         recommendation:
           type: ["string", "null"]
+    DomainInput:
+      type: object
+      required: [domain]
+      properties:
+        domain:
+          type: string
+          minLength: 3
+          maxLength: 253
+          description: Domain hostname without scheme, port or path
+    DomainRecordCheck:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ok, empty, error, timeout, blocked]
+        source:
+          type: ["string", "null"]
+        data:
+          nullable: true
+          description: Check result payload
+        error:
+          type: ["string", "null"]
+        timestamp:
+          type: string
+    DomainResult:
+      type: object
+      required: [domain, riskScore, riskLabel, summary, dns, tls, rdap, spf, dmarc]
+      properties:
+        domain:
+          type: string
+        riskScore:
+          type: integer
+          description: 0-100 risk score
+        riskLabel:
+          type: string
+          enum: [safe, warning, danger]
+        summary:
+          type: string
+        dns:
+          $ref: "#/components/schemas/DomainRecordCheck"
+        tls:
+          $ref: "#/components/schemas/DomainRecordCheck"
+        rdap:
+          $ref: "#/components/schemas/DomainRecordCheck"
+        spf:
+          $ref: "#/components/schemas/DomainRecordCheck"
+        dmarc:
+          $ref: "#/components/schemas/DomainRecordCheck"
     LogEntry:
       type: object
       required: [id, level, message, timestamp]
